@@ -7,6 +7,7 @@ The code includes the frame structure of 5G NR and has the following dependencie
 * python 3
 * Numpy and Scipy
 * Simpy
+The C++ code is used to calculate the SNR given some parameters, already defined. It is necessary to compile the file to successfuly run the python script.
 
 # Reference
 
