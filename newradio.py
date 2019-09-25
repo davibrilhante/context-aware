@@ -30,10 +30,13 @@ def numerology(subcarrierSpacing):
         'ofdmSymbolDuration':0,
         'slotDuration':SUBFRAME_DURATION,
         'minRB':20,
-        'maxRB':275
+        'maxRB':275,
+        'ss_blocks':[0 for i in range(14)]
     }
+
     if subcarrierSpacing == 15:
         numerol['ofdmSymbolDuration'] = SUBFRAME_DURATION/14
+        numerol['ss_blocks'] = []
         return numerol
 
     elif subcarrierSpacing == 30:
@@ -139,6 +142,8 @@ class Network(object):
         return np.rad2deg(np.arctan2(user.y, user.x))
 
     def initialAccess(self, algorithm, condition):
+        timeSpent = 0
+        neededSSB = 0
         for user in self.inRangeusers:
             dist = str(self.calcUserDist(user))
             angle = str(self.calcUserAngle(user))
@@ -152,20 +157,42 @@ class Network(object):
                     print("initial-access returned", result, file=sys.stderr)
             except:
                 print("Execution failed:", e, file=sys.stderr)
+            if algorithm == '0': #exhaustive
+                1
 
+            #The feedback is a problem
+            elif algorithm == '1': #iterative
+                neededSSB = user.numberBeams*(self.numberBeams/2) + 2
+
+            elif algorithm == '2': #gps+iterative
+                neededSSB = user.numberBeams*(self.numberBeams/4) + 4
+
+            elif algorithm == '3': #refined+search
+                neededSSB = 5
+            
 
     def associationRequest(self,user):
-        if self.env.now + LTE_RTT < (self.ssbIndex+1)*SSB_DURATION:
-            '''
-            In this occasion, the message containig the lacation had the time
-            to travel through the LTE control channel before the next SS Burst
-            '''
-            self.inRangeUsers.append(user)
-            algorithm = sys.argv[1]
-            condition = sys.argv[2]
-            self.initialAccess(algorithm, condition)
+        algorithm = sys.argv[1]
+        condition = sys.argv[2]
+        #The search is exhaustive, so the search is a little different
+        if algorithm == '0':
+            #UE join the network before the nearest SSB
+            if self.env.now < (self.ssbIndex+1)*SSB_DURATION:
+                1
+            #UE join the network during a SSB
+            elif self.env.now < (self.ssbIndex+1)*SSB_DURATION + 5:
+                1
+        #The search is not exhaustive
         else:
-            1
+            if self.env.now + LTE_RTT < (self.ssbIndex+1)*SSB_DURATION:
+                '''
+                In this occasion, the message containig the lacation had the time
+                to travel through the LTE control channel before the next SS Burst
+                '''
+                self.inRangeUsers.append(user)
+                self.initialAccess(algorithm, condition)
+            else:
+                1
 
 class User(object):
     def __init__(self, radius, antennaArray):
