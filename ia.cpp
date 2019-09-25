@@ -81,9 +81,8 @@ int fastIA;
 
 //################################################################################################################
 
-void read_params(int argc, char *argv[ ])
+void read_params(int argc, char *argv[])
 {
-
 	Pt = atof(argv[1]);
 	dmax = atoi(argv[2]); // ------> VAI SER A DISTANCIA ENTRE BASE E USUARIO
 	npontos =atoi(argv[3]);
@@ -114,8 +113,10 @@ void read_params(int argc, char *argv[ ])
 	condCanal = atoi(argv[28]);
 	angleUser = atof(argv[29]);// --------> CRIAR OUTRO PARAMETRO PASSANDO O ANGULO
 
-    M_BS=N_BS=atoi(argv[30]);
-    M_UE=N_UE=atoi(argv[31]);
+    M_BS = atoi(argv[30]);
+    N_BS = M_BS; //atoi(argv[30]);
+    N_UE = atoi(argv[31]);
+    M_UE = N_UE; //atoi(argv[31]);
     // ----------> SE MODIFICAR O TAMANHO DO ARRAY DE ANTENAS MODIFICAR TAMBEM OS VETORES DE ANGULO
     fi_BS[M_BS+N_BS]={};
     fi_UE[M_UE+N_UE]={};

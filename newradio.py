@@ -149,11 +149,11 @@ class Network(object):
     def initialAccess(self, algorithm, condition):
         timeSpent = 0
         neededSSB = 0
-        for user in self.inRangeusers:
+        for user in self.inRangeUsers:
             Pt = ' 30'
             dist = str(self.calcUserDist(user)) #{5 10 15 20 30 40 50 60 70 80 90 100 140 180 200}; # VOU PASSAR ESSE VALOR
             npontos = ' 50'
-            seed = sys.argv[5]
+            seed = sys.argv[4]
             NF = ' 5'
             TN = ' -174'
             BW = ' 400000000' #1000000000
@@ -166,7 +166,7 @@ class Network(object):
             protoParam = ' 500'
             limite = protoParam # O QUE SER ISSO?
             tipoErro = ' 1'
-            mediaErroGPS = sys.argv[4]
+            mediaErroGPS = sys.argv[3]
             desvErroGPS = ' 10'
             alg = algorithm #sys.argv[1]
             log= ' 0'
@@ -180,8 +180,8 @@ class Network(object):
             angle = str(self.calcUserAngle(user))
             bs_array = str(self.antennaArray[0])
             ue_array = str(user.antennaArray[0])
-            arqname = ' initial-access-'+alg+'-'+condCanal+'-'+mediaErroGPS+'-'+seed
-
+            arqname = ' /dev/null'#' initial-access-'+alg+'-'+condCanal+'-'+mediaErroGPS+'-'+seed
+            
 
             command = ('./initial-access'+Pt+' '+dist+npontos+' '+seed+arqname+NF+TN+BW+div+move+minSNR+Tper+Tcanal+limite+tipoErro
                       +' '+mediaErroGPS+desvErroGPS+' '+alg+log+velocityUSR+velocityOBJ+protoID+decaimentoTaxaRx+quedaTaxaRx+fastIA+limFastIA
@@ -225,12 +225,12 @@ class Network(object):
                 1
         #The search is not exhaustive
         else:
-            print("Condition: ",(self.ssbIndex+1)*BURST_PERIOD)
-            if self.env.now + LTE_RTT < (self.ssbIndex+1)*BURST_DURATION:
+            if (int(self.env.now) + LTE_RTT) < (self.ssbIndex*BURST_PERIOD):
                 '''
                 In this occasion, the message containig the lacation had the time
                 to travel through the LTE control channel before the next SS Burst
                 '''
+                print("Condition: ",int(self.env.now) + LTE_RTT, (self.ssbIndex+1)*BURST_PERIOD)
                 self.inRangeUsers.append(user)
                 self.initialAccess(algorithm, condition)
             else:
