@@ -632,8 +632,8 @@ int main(int argc, char *argv[ ])
 	FILE *distr_ray;
 	float vet_ray [linha]={0.0};
 	char line[1000];
-	sprintf(line, "rayleigh_v%d.txt", (int)velocity_OBJ);
-	printf(line, "rayleigh_v%d.txt", (int)velocity_OBJ);
+	sprintf(line, "rayleigh/rayleigh_v%d.txt", (int)velocity_OBJ);
+	printf(line, "rayleigh/rayleigh_v%d.txt", (int)velocity_OBJ);
 	distr_ray =fopen(line,"r");
 	printf("%s\n", line);
 	for(int r=0 ;r<linha; r++){
