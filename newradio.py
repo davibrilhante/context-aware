@@ -151,8 +151,8 @@ class Network(object):
         neededSSB = 0
         for user in self.inRangeUsers:
             Pt = ' 30'
-            dist = str(self.calcUserDist(user)) #{5 10 15 20 30 40 50 60 70 80 90 100 140 180 200}; # VOU PASSAR ESSE VALOR
-            npontos = ' 50'
+            dist = str(self.calcUserDist(user)) 
+            npontos = ' 1'#' 50'
             seed = sys.argv[4]
             NF = ' 5'
             TN = ' -174'
@@ -164,7 +164,7 @@ class Network(object):
             Tcanal = ' 1'
             protoID = ' 1'
             protoParam = ' 500'
-            limite = protoParam # O QUE SER ISSO?
+            limite = protoParam # O QUE EH ISSO?
             tipoErro = ' 1'
             mediaErroGPS = sys.argv[3]
             desvErroGPS = ' 10'
@@ -172,8 +172,8 @@ class Network(object):
             log= ' 0'
             velocityUSR = ' 0'
             velocityOBJ = ' 5'
-            decaimentoTaxaRx = protoParam # O QUE SER ISSO 
-            quedaTaxaRx = protoParam #O QUE SER ISSO
+            decaimentoTaxaRx = protoParam # O QUE EH ISSO? 
+            quedaTaxaRx = protoParam #O QUE EH ISSO?
             fastIA = ' 0'
             limFastIA = ' 0'
             condCanal = condition #sys.argv[2]
@@ -192,7 +192,7 @@ class Network(object):
                 if result < 0:
                     print("initial-access was terminated by signal", -result, file=sys.stderr)
                 else:
-                    print("initial-access returned", result)#, file=sys.stderr)
+                    print("initial-access returned", result, file=sys.stderr)
             except:
                 print("Execution failed:", e, file=sys.stderr)
 
