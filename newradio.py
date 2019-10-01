@@ -3,7 +3,7 @@ from scipy import stats
 import numpy as np
 from subprocess import call
 import sys
-
+from simutime import Time
 
 
 '''
@@ -247,6 +247,7 @@ class Network(object):
         if algorithm == '0':
             #UE joins the network before the nearest SSB
             if self.env.now < (self.ssbIndex)*BURST_PERIOD:
+                print('\033[94m'+"UE joined the network before a SSB"+'\033[0m')
                 #Nearest SSB is really a SSB
                 if self.ssbIndex % (RACH_PERIOD/BURST_PERIOD) != 0:
                     print('\033[92m'+"Condition: ",int(self.env.now), (self.ssbIndex)*BURST_PERIOD,'\033[0m')
@@ -255,6 +256,7 @@ class Network(object):
                     print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
             #UE joins the network during the nearest BURST
             elif self.env.now >= (self.ssbIndex-1)*BURST_PERIOD and self.env.now < (self.ssbIndex-1)*BURST_PERIOD + BURST_DURATION:
+                print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
                 #This SSB happening now is really a SSB
                 if self.ssbIndex-1 % (RACH_PERIOD/BURST_PERIOD) != 0:
                     print('\033[94m'+"Condition: ",int(self.env.now), (self.ssbIndex)*BURST_PERIOD,'\033[0m')
