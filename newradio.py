@@ -9,6 +9,7 @@ import sys
 '''
 Global definitions 
 '''
+SSBLOCK_LENGTH=4 #in OFDM Symbols
 FRAME_DURATION=10
 SUBFRAME_DURATION=1
 BURST_DURATION=5
@@ -20,7 +21,7 @@ ENV_RADIUS=50
 SPACE=[[0 for j in range(2*ENV_RADIUS+1)] for i in range(2*ENV_RADIUS+1)]
 
 
-def numerology(subcarrierSpacing, ):
+def numerology(subcarrierSpacing, ssburstLength=None):
     """
     Defines the time numerology based on the frame structure of 5G NR
     Needs the the subcarrier spacing in kHz, e.g. 15 means 15 kHz
@@ -30,37 +31,57 @@ def numerology(subcarrierSpacing, ):
         'ofdmSymbolDuration':0,
         'slotDuration':SUBFRAME_DURATION,
         'minRB':20,
-        'maxRB':275
-        #'ssblocks':4,
-        #'ssblockMapping':[0 for i in range(14)]
+        'maxRB':275,
+        'ssblocks':4,
+        'ssBurstSlots':0, #BURST_PERIOD/numerol['slotDuration'],
+        'ssblockMapping':0 #[0 for i in range(14*numerol['ssBurstSlots'])]
     }
 
     if subcarrierSpacing == 15:
         numerol['ofdmSymbolDuration'] = SUBFRAME_DURATION/14
-#        if numerol['ssblocks']==4:
-#            numerol['ssblockMapping'] = []
-#        elif numerol['ssblocks']==8:
-#            numerol['ssblockMapping'] = []
+        numerol['ssBurstSlots'] = BURST_PERIOD/numerol['slotDuration'],
+        if ssburstLength == 4 or ssburstLength==None:
+            numerol['ssblocks']=4
+            numerol['ssblockMapping'] = ([0,0]+[1 for i in range(4)]+[0,0]+[1 for i in range(4)]+[0,0])*2 + [0 for i in range((numerol['ssBurstSlots']-2)*14)]
+        elif ssburstLength == 8: 
+            numerol['ssblocks'] = 8
+            numerol['ssblockMapping'] = ([0,0]+[1 for i in range(4)]+[0,0]+[1 for i in range(4)]+[0,0])*4 + [0 for i in range(14)]
         return numerol
 
     elif subcarrierSpacing == 30:
         numerol['slotDuration'] = SUBFRAME_DURATION/2
         numerol['ofdmSymbolDuration'] = numerol['slotDuration']/14
+        numerol['ssBurstSlots'] = BURST_PERIOD/numerol['slotDuration'],
+        if ssburstLength == 4 or ssburstLength==None:
+            numerol['ssblocks'] = 4
+            numerol['ssblockMapping'] = ([0 for i in range(4)]+[1 for i in range(4)]*2)*2+[0 for i in range(4)] +[0 for i in range((numerol['ssBurstSlots']-2)*14)]
+        elif ssburstLength == 8:
+            numerol['ssblocks'] = 8
+            numerol['ssblockMapping'] = ([0,0]+[1 for i in range(4)]+[0,0]+[1 for i in range(4)]+[0,0])*4 + [0 for i in range((numerol['ssBurstSlots']-4)*14)]
         return numerol
 
     elif subcarrierSpacing == 60:
         numerol['slotDuration'] = SUBFRAME_DURATION/4
         numerol['ofdmSymbolDuration'] = numerol['slotDuration']/14
+        numerol['ssBurstSlots'] = BURST_PERIOD/numerol['slotDuration'],
+        numerol['ssblocks'] = 8
+        numerol['ssblockMapping'] = []
         return numerol
 
     elif subcarrierSpacing == 120:
         numerol['slotDuration'] = SUBFRAME_DURATION/8
         numerol['ofdmSymbolDuration'] = numerol['slotDuration']/14
+        numerol['ssBurstSlots'] = BURST_PERIOD/numerol['slotDuration'],
+        numerol['ssblocks'] = 64
+        numerol['ssblockMapping'] = ((([0 for i in range(4)]+[1 for i in range(8)])*2+[0 for i in range(4)])*4+[0 for i in range(14)]*2)*4
         return numerol
 
     elif subcarrierSpacing == 240:
         numerol['slotDuration'] = SUBFRAME_DURATION/16
         numerol['ofdmSymbolDuration'] = numerol['slotDuration']/14
+        numerol['ssBurstSlots'] = BURST_PERIOD/numerol['slotDuration'],
+        numerol['ssblocks']= 64
+        numerol['ssblockMapping'] = ((([0 for i in range(8)]+[1 for i in range(16)])*2+[0 for i in range(8)])*4+[0 for i in range(14)]*4)*2+[0 for i in range(14)]*32
         return numerol
     else:
         print("Not a valid subcarrier spacing passed!")
@@ -81,6 +102,12 @@ class Network(object):
         self.ssbIndex = 1
         #Defines the position of the BS at the spatial occupation matrix
         SPACE[ENV_RADIUS-1][ENV_RADIUS-1]=1
+        self.subcarrierSpacing = 120
+        self.numerology = numerology(self.subcarrierSpacing)
+
+    def setSubcarrierSpacing(self, subcarrierSpacing, burstSetLength=None):
+        self.numerology = numerology(subcarrierSpacing, burstSetLength)
+        
 
     def burstSet(self, burstDuration, burstPeriod, rachPeriod):
         '''
@@ -96,7 +123,7 @@ class Network(object):
         '''
         while True:
             if (self.ssbIndex % (rachPeriod/burstPeriod)) != 0:
-                print('A new burst set is starting at %d' % self.env.now)
+                print('A new burst set is starting at %d and it is the %d ss burst' % (self.env.now, self.ssbIndex))
                 yield self.env.timeout(burstDuration)
                 print('The burst set has finished at %d' % self.env.now)
                 yield self.env.timeout(burstPeriod - burstDuration)
@@ -123,7 +150,7 @@ class Network(object):
             if self.frameIndex==1:
                 yield self.env.timeout(rachPeriod)
             else:
-                print('A new rach opportunity is starting at %d' % self.env.now)
+                print('A new rach opportunity is starting at %d and it is the %d ss burst' % (self.env.now, self.ssbIndex))
                 yield self.env.timeout(rachDuration)
                 print('The rach opportunity  has finished at %d' % self.env.now)
                 yield self.env.timeout(rachPeriod - rachDuration)
@@ -150,9 +177,9 @@ class Network(object):
         timeSpent = 0
         neededSSB = 0
         for user in self.inRangeUsers:
-            Pt = ' 30'
+            Pt = ' 1' #' 30'
             dist = str(self.calcUserDist(user)) 
-            npontos = ' 1'#' 50'
+            npontos = ' 1' #' 50'
             seed = sys.argv[4]
             NF = ' 5'
             TN = ' -174'
@@ -190,16 +217,17 @@ class Network(object):
             try:
                 result = call(command, shell=True)
                 if result < 0:
-                    print("initial-access was terminated by signal", -result, file=sys.stderr)
+                    print("initial-access was terminated by signal")#, -result)#, file=sys.stderr)
                 else:
-                    print("initial-access returned", result, file=sys.stderr)
+                    print("initial-access returned")#, result, file=sys.stderr)
             except:
-                print("Execution failed:", e, file=sys.stderr)
+                print("Execution failed:")#, e, file=sys.stderr)
 
             if algorithm == '0': #exhaustive
                 1
 
-            #The feedback is a problem
+            #The feedback will be sent in the next RACH Opportunity and the 
+            #other UE will use the rest of Burst Set to download data from gNB
             elif algorithm == '1': #iterative
                 neededSSB = user.numberBeams*(self.numberBeams/2) + 2
 
@@ -212,25 +240,42 @@ class Network(object):
             
 
     def associationRequest(self,user):
-        print("chamou a callback")
         algorithm = sys.argv[1]
         condition = sys.argv[2]
+
         #The search is exhaustive, so the search is a little different
         if algorithm == '0':
-            #UE join the network before the nearest SSB
-            if self.env.now < (self.ssbIndex+1)*BURST_DURATION:
+            #UE joins the network before the nearest SSB
+            if self.env.now < (self.ssbIndex)*BURST_PERIOD:
+                #Nearest SSB is really a SSB
+                if self.ssbIndex % (RACH_PERIOD/BURST_PERIOD) != 0:
+                    print('\033[92m'+"Condition: ",int(self.env.now), (self.ssbIndex)*BURST_PERIOD,'\033[0m')
+                #Nearest SSB actually is a RACH Opportunity
+                else:
+                    print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            #UE joins the network during the nearest BURST
+            elif self.env.now >= (self.ssbIndex-1)*BURST_PERIOD and self.env.now < (self.ssbIndex-1)*BURST_PERIOD + BURST_DURATION:
+                #This SSB happening now is really a SSB
+                if self.ssbIndex-1 % (RACH_PERIOD/BURST_PERIOD) != 0:
+                    print('\033[94m'+"Condition: ",int(self.env.now), (self.ssbIndex)*BURST_PERIOD,'\033[0m')
+                    #How many ss blocks are necessary to complete the sweeping?
+                    beginingSSB = (self.ssbIndex)*BURST_PERIOD  
+                #This SSB happening now actually is a RACH Opportunity
+                else:
+                    print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            #UE joins the network between the nearest BURST and the next RACH
+            #or between next two BURSTS
+            else:
                 1
-            #UE join the network during a BURST
-            elif self.env.now < (self.ssbIndex+1)*BURST_DURATION + 5:
-                1
+
         #The search is not exhaustive
         else:
             if (int(self.env.now) + LTE_RTT) < (self.ssbIndex*BURST_PERIOD):
                 '''
-                In this occasion, the message containig the lacation had the time
+                In this occasion, the message containig the location had the time
                 to travel through the LTE control channel before the next SS Burst
                 '''
-                print("Condition: ",int(self.env.now) + LTE_RTT, (self.ssbIndex+1)*BURST_PERIOD)
+                print("Condition: ",int(self.env.now) + LTE_RTT, (self.ssbIndex)*BURST_PERIOD)
                 self.inRangeUsers.append(user)
                 self.initialAccess(algorithm, condition)
             else:
