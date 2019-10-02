@@ -3,21 +3,21 @@ from scipy import stats
 import numpy as np
 from subprocess import call
 import sys
-from simutime import Time
+import simutime as st
 
 
 '''
 Global definitions 
 '''
-SSBLOCK_LENGTH=4 #in OFDM Symbols
-FRAME_DURATION=10
-SUBFRAME_DURATION=1
-BURST_DURATION=5
-BURST_PERIOD=20
-RACH_PERIOD=40
-SIM_DURATION=10000
-LTE_RTT=1
-ENV_RADIUS=50
+SSBLOCK_LENGTH = 4 #in OFDM Symbols
+FRAME_DURATION = st.milliseconds(10).micro()
+SUBFRAME_DURATION = st.milliseconds(1).micro()
+BURST_DURATION = st.milliseconds(5).micro()
+BURST_PERIOD = st.milliseconds(20).micro()
+RACH_PERIOD = st.milliseconds(40).micro()
+SIM_DURATION = st.seconds(10).micro()
+LTE_RTT = st.milliseconds(1).micro()
+ENV_RADIUS = 50 #meters
 SPACE=[[0 for j in range(2*ENV_RADIUS+1)] for i in range(2*ENV_RADIUS+1)]
 
 
@@ -343,7 +343,7 @@ if __name__ == "__main__":
     The user mean user arrival/inter-arrival rate, i.e. 1 user per arrival 
     rate, in seconds
     """
-    arrivalRate = 1000
+    arrivalRate = st.seconds(1).micro() 
     skipRate = arrivalRate
     activeUsers = [] 
     """

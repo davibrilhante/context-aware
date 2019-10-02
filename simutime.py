@@ -1,4 +1,4 @@
-class seconds:
+class seconds(float):
     def __init__(self, amount):
         self.amount = amount
     '''
@@ -22,7 +22,7 @@ class seconds:
     def nano(self): 
         return self.amount*1e9
 
-class milliseconds:
+class milliseconds(float):
     def __init__(self, amount):
         self.amount = amount
     def minute(self):
@@ -35,7 +35,7 @@ class milliseconds:
         return self.amount*1e6
 
 
-class microseconds:
+class microseconds(float):
     def __init__(self, amount):
         self.amount = amount
     def minute(self):
@@ -48,7 +48,7 @@ class microseconds:
         return self.amount*1e3
 
 
-class nanoseconds:
+class nanoseconds(float):
     def __init__(self, amount):
         self.amount = amount
     def minute(self):
@@ -59,9 +59,9 @@ class nanoseconds:
         return self.amount/1e6
     def micro(self): 
         return self.amount/1e3
-'''
+
 def divide(a,b):
     if type(a) == type(b):
-        return a.amount/b.amount
+        return a/b
     else:
-'''
+        1
