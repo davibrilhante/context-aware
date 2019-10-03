@@ -5,6 +5,8 @@ from subprocess import call
 import sys
 import simutime as st
 
+np.random.seed(int(sys.argv[4]))
+
 
 '''
 Global definitions 
@@ -196,7 +198,7 @@ class Network(object):
             mediaErroGPS = sys.argv[3]
             desvErroGPS = ' 10'
             alg = algorithm #sys.argv[1]
-            log= ' 0'
+            log= ' 1'
             velocityUSR = ' 0'
             velocityOBJ = ' 5'
             decaimentoTaxaRx = protoParam # O QUE EH ISSO? 
@@ -207,7 +209,7 @@ class Network(object):
             angle = str(self.calcUserAngle(user))
             bs_array = str(self.antennaArray[0])
             ue_array = str(user.antennaArray[0])
-            arqname = ' /dev/null'#' initial-access-'+alg+'-'+condCanal+'-'+mediaErroGPS+'-'+seed
+            arqname = ' lixeirao'#/dev/null'#' initial-access-'+alg+'-'+condCanal+'-'+mediaErroGPS+'-'+seed
             
 
             command = ('./initial-access'+Pt+' '+dist+npontos+' '+seed+arqname+NF+TN+BW+div+move+minSNR+Tper+Tcanal+limite+tipoErro
@@ -217,9 +219,9 @@ class Network(object):
             try:
                 result = call(command, shell=True)
                 if result < 0:
-                    print("initial-access was terminated by signal")#, -result)#, file=sys.stderr)
+                    print("initial-access was terminated by signal", -result)#, file=sys.stderr)
                 else:
-                    print("initial-access returned")#, result, file=sys.stderr)
+                    print("initial-access returned", result, file=sys.stderr)
             except:
                 print("Execution failed:")#, e, file=sys.stderr)
 
@@ -245,6 +247,8 @@ class Network(object):
 
         #The search is exhaustive, so the search is a little different
         if algorithm == '0':
+            self.inRangeUsers.append(user)
+            self.initialAccess(algorithm, condition)
             #UE joins the network before the nearest SSB
             if self.env.now < (self.ssbIndex)*BURST_PERIOD:
                 print('\033[94m'+"UE joined the network before a SSB"+'\033[0m')
@@ -254,17 +258,19 @@ class Network(object):
                 #Nearest SSB actually is a RACH Opportunity
                 else:
                     print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+
             #UE joins the network during the nearest BURST
             elif self.env.now >= (self.ssbIndex-1)*BURST_PERIOD and self.env.now < (self.ssbIndex-1)*BURST_PERIOD + BURST_DURATION:
                 print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
                 #This SSB happening now is really a SSB
                 if self.ssbIndex-1 % (RACH_PERIOD/BURST_PERIOD) != 0:
-                    print('\033[94m'+"Condition: ",int(self.env.now), (self.ssbIndex)*BURST_PERIOD,'\033[0m')
+                    print('\033[94m'+"Now: ",int(self.env.now), "Next SSB:",(self.ssbIndex)*BURST_PERIOD,'\033[0m')
                     #How many ss blocks are necessary to complete the sweeping?
                     beginingSSB = (self.ssbIndex)*BURST_PERIOD  
                 #This SSB happening now actually is a RACH Opportunity
                 else:
                     print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+
             #UE joins the network between the nearest BURST and the next RACH
             #or between next two BURSTS
             else:
