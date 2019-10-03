@@ -42,8 +42,8 @@ int N_UE;// = 4;
 
 float pi = 3.1415926535;
 
-float fi_UE[]={};
-float fi_BS[]={};
+float *fi_UE;
+float *fi_BS;
 float real;
 float normallos;
 float normalnlos;
@@ -118,8 +118,8 @@ void read_params(int argc, char *argv[])
     N_UE = atoi(argv[31]);
     M_UE = N_UE; //atoi(argv[31]);
     // ----------> SE MODIFICAR O TAMANHO DO ARRAY DE ANTENAS MODIFICAR TAMBEM OS VETORES DE ANGULO
-    fi_BS[M_BS+N_BS]={};
-    fi_UE[M_UE+N_UE]={};
+    fi_BS = (float*) malloc((M_BS+N_BS)*sizeof(float));
+    fi_UE = (float*) malloc((M_UE+N_UE)*sizeof(float));
 }
 
 //################################################################################################################
@@ -143,20 +143,20 @@ void create_scenario(std::default_random_engine gen,
 	somador_BS = 0;
 	somador_UE = 0;
 	//criando codebook
-	if(algorithm == 4){ printf("algoritmo 4\n\n");
+	if(algorithm == 4){//printf("algoritmo 4\n\n");
 	
 		for(int l = 0; l<M_UE+N_UE; l++){
 
 			fi_UE[l] = somador_UE;
 			somador_UE = somador_UE + 360.0/(M_UE+N_UE);
-			printf("fi_UE %f\n ", fi_UE[l]);
+		//printf("fi_UE %f\n ", fi_UE[l]);
 		}
 
 		for(int k = 0; k<M_BS+N_BS; k++){
 
 			fi_BS[k] = somador_BS+7.5;
 			somador_BS =somador_BS + 360.0/(M_BS+N_BS);
-			printf("fi_BS %f\n ", fi_BS[k]);
+		//printf("fi_BS %f\n ", fi_BS[k]);
 
 		}
 
@@ -166,14 +166,14 @@ void create_scenario(std::default_random_engine gen,
 
 			fi_UE[l] = somador_UE;
 			somador_UE = somador_UE + 360.0/(M_UE+N_UE);
-			printf("fi_UE %f\n ", fi_UE[l]);
+		//printf("fi_UE %f\n ", fi_UE[l]);
 		}
 
 		for(int k = 0; k<M_BS+N_BS; k++){
 
 			fi_BS[k] = somador_BS;
 			somador_BS =somador_BS + 360.0/(M_BS+N_BS);
-			printf("fi_BS %f\n ", fi_BS[k]);
+		//printf("fi_BS %f\n ", fi_BS[k]);
 
 		}
 
@@ -189,13 +189,13 @@ void create_scenario(std::default_random_engine gen,
 	==========================================================*/
 	fi_BU = mainAngle; //angle_rand (gen);
 	fi_UB = fmod(fi_BU + 180,360);
-	printf("fi_BU %f ", fi_BU);
-	printf("fi_UB %f\n ", fi_UB);
+//printf("fi_BU %f ", fi_BU);
+//printf("fi_UB %f\n ", fi_UB);
 
 	X=cos(fi_BU*pi/180)*dist;
 	Y=sin(fi_BU*pi/180)*dist;
-	printf("X= %f ", X);
-	printf("Y= %f\n ", Y);
+//printf("X= %f ", X);
+//printf("Y= %f\n ", Y);
 	
 	float x;
 	float y;
@@ -208,30 +208,30 @@ void create_scenario(std::default_random_engine gen,
 
 			std::uniform_real_distribution<double> distribution_x(X-mediaErroGPS,X+mediaErroGPS);
 			x = distribution_x(gen);
-			printf("y_erro = %f\n ", x);
+		//printf("y_erro = %f\n ", x);
 
 			std::uniform_real_distribution<double> distribution_y(Y-mediaErroGPS,Y+mediaErroGPS);	
 			y = distribution_y(gen);
-			printf("x_erro = %f\n ", y);
+		//printf("x_erro = %f\n ", y);
 
 			resultado= sqrt(fabs(pow(x,2)+pow(y,2))); 
-			printf("resultado = %f\n ", resultado);
+		//printf("resultado = %f\n ", resultado);
 		}
 	} else if (tipoErro==1) { //Normal
 		std::normal_distribution<double> pos (mediaErroGPS, desvErroGPS);
 		std::uniform_real_distribution<double> angulo (0, 360);
 		double ang = angulo(gen);
-		printf("ang = %f\n ", ang);
+	//printf("ang = %f\n ", ang);
 		double distgps = fabs(pos(gen));
-		printf("distgps = %f\n ", distgps);
+	//printf("distgps = %f\n ", distgps);
 
 		x = X + distgps*cos(ang*pi/180);
 		y = Y + distgps*sin(ang*pi/180);
-		printf("x_erro = %f\n ", x);
-		printf("y_erro = %f\n ", y);
+	//printf("x_erro = %f\n ", x);
+	//printf("y_erro = %f\n ", y);
 
 	} else {
-		printf("Modelo de erro desconhecido.\n");
+	//printf("Modelo de erro desconhecido.\n");
 		exit(1);
 	}
 
@@ -244,7 +244,7 @@ void create_scenario(std::default_random_engine gen,
 
 	if(y<0 && x>0){fi_BU_erro = ((atan(y/x) * 180) / pi) + 360;}
 	
-	printf("fi_BU_erro %f\n  ", fi_BU_erro);
+//printf("fi_BU_erro %f\n  ", fi_BU_erro);
 
 	dif_BS =360.0;
 	for(int p = 0; p<M_BS+N_BS; p++){
@@ -256,7 +256,7 @@ void create_scenario(std::default_random_engine gen,
 			fiBS = fi_BS[p];
 		}
 
-		if(algorithm == 4){printf("algoritmo 4\n\n");
+		if(algorithm == 4){//printf("algoritmo 4\n\n");
 			
 			if(fabs(367.5-fi_BU_erro)<dif_BS){fiBS = fi_BS[0];}
 	
@@ -267,27 +267,27 @@ void create_scenario(std::default_random_engine gen,
 
 		
 	}
-	printf("fiBSsssss %f\n  ", fiBS);
+//printf("fiBSsssss %f\n  ", fiBS);
 
 	// Sorteia canal
-	printf("dist %f\n ", dist);
+//printf("dist %f\n ", dist);
 	Pout = (1 - exp(((-0.033333333*dist) + 5.2)));
 
 	if(Pout<0){Pout=0;}
 
 	Plos = ((1 - Pout)*(exp(-0.014903129*dist)));
 	Pnlos = (1 - Pout - Plos);
-	printf("Pout final %f ", Pout);
-	printf("Plos final %f ", Plos);
-	printf("Pnlos final %f\n ", Pnlos);
+//printf("Pout final %f ", Pout);
+//printf("Plos final %f ", Plos);
+//printf("Pnlos final %f\n ", Pnlos);
 
 	real = uniform_rand(gen);
 	normallos = los_rand(gen);
 	normalnlos = nlos_rand(gen);
 
-	printf("real %f\t ", real);
-	printf("normallos %f\t ", normallos);
-	printf("normalnlos %f\n ", normalnlos);
+//printf("real %f\t ", real);
+//printf("normallos %f\t ", normallos);
+//printf("normalnlos %f\n ", normalnlos);
 
 	
 }
@@ -303,14 +303,14 @@ void update_scenario(std::default_random_engine gen,
                      std::uniform_real_distribution<double> angle_rand,
 		     float incX, float incY, int update)
 {
-	printf("antes X = %f\n ", X);
-	printf("antes Y = %f\n ", Y);
-	printf("incX = %f\n ", incX);
-	printf("incY = %f\n ", incY);
+//printf("antes X = %f\n ", X);
+//printf("antes Y = %f\n ", Y);
+//printf("incX = %f\n ", incX);
+//printf("incY = %f\n ", incY);
 	X= X + incX;
 	Y= Y + incY;
-	printf("depois X = %f\n ", X);
-	printf("depois Y = %f\n ", Y);
+//printf("depois X = %f\n ", X);
+//printf("depois Y = %f\n ", Y);
 
 	dist=sqrt(fabs(pow(X,2)+pow(Y,2)));
 
@@ -324,28 +324,28 @@ void update_scenario(std::default_random_engine gen,
 
 	fi_UB = fmod(fi_BU + 180,360);
 
-	printf("fi_BU %f ", fi_BU);
-	printf("fi_UB %f\n ", fi_UB);
-	printf("dist %f\n ", dist);
+//printf("fi_BU %f ", fi_BU);
+//printf("fi_UB %f\n ", fi_UB);
+//printf("dist %f\n ", dist);
 
 	if(update==1){
 		somador_BS = 0;
 		somador_UE = 0;
 		//criando codebook
-		if(algorithm == 4){ printf("algoritmo 4\n\n");
+		if(algorithm == 4){//printf("algoritmo 4\n\n");
 	
 			for(int l = 0; l<M_UE+N_UE; l++){
 
 				fi_UE[l] = somador_UE;
 				somador_UE = somador_UE + 360.0/(M_UE+N_UE);
-				printf("fi_UE %f\n ", fi_UE[l]);
+			//printf("fi_UE %f\n ", fi_UE[l]);
 			}
 
 			for(int k = 0; k<M_BS+N_BS; k++){
 
 				fi_BS[k] = somador_BS+7.5;
 				somador_BS =somador_BS + 360.0/(M_BS+N_BS);
-				printf("fi_BS %f\n ", fi_BS[k]);
+			//printf("fi_BS %f\n ", fi_BS[k]);
 
 			}
 
@@ -355,14 +355,14 @@ void update_scenario(std::default_random_engine gen,
 
 				fi_UE[l] = somador_UE;
 				somador_UE = somador_UE + 360.0/(M_UE+N_UE);
-				printf("fi_UE %f\n ", fi_UE[l]);
+			//printf("fi_UE %f\n ", fi_UE[l]);
 			}
 
 			for(int k = 0; k<M_BS+N_BS; k++){
 
 				fi_BS[k] = somador_BS;
 				somador_BS =somador_BS + 360.0/(M_BS+N_BS);
-				printf("fi_BS %f\n ", fi_BS[k]);
+			//printf("fi_BS %f\n ", fi_BS[k]);
 
 			}
 
@@ -380,30 +380,30 @@ void update_scenario(std::default_random_engine gen,
 
 				std::uniform_real_distribution<double> distribution_x(X-mediaErroGPS,X+mediaErroGPS);
 				x = distribution_x(gen);
-				printf("y_erro = %f\n ", x);
+			//printf("y_erro = %f\n ", x);
 
 				std::uniform_real_distribution<double> distribution_y(Y-mediaErroGPS,Y+mediaErroGPS);	
 				y = distribution_y(gen);
-				printf("x_erro = %f\n ", y);
+			//printf("x_erro = %f\n ", y);
 
 				resultado= sqrt(fabs(pow(x,2)+pow(y,2))); 
-				printf("resultado = %f\n ", resultado);
+			//printf("resultado = %f\n ", resultado);
 			}
 		} else if (tipoErro==1) { //Normal
 			std::normal_distribution<double> pos (mediaErroGPS, desvErroGPS);
 			std::uniform_real_distribution<double> angulo (0, 360);
 			double ang = angulo(gen);
-			printf("ang = %f\n ", ang);
+		//printf("ang = %f\n ", ang);
 			double distgps = fabs(pos(gen));
-			printf("distgps = %f\n ", distgps);
+		//printf("distgps = %f\n ", distgps);
 
 			x = X + distgps*cos(ang*pi/180);
 			y = Y + distgps*sin(ang*pi/180);
-			printf("x_erro = %f\n ", x);
-			printf("y_erro = %f\n ", y);
+		//printf("x_erro = %f\n ", x);
+		//printf("y_erro = %f\n ", y);
 
 		} else {
-			printf("Modelo de erro desconhecido.\n");
+		//printf("Modelo de erro desconhecido.\n");
 			exit(1);
 		}
 
@@ -416,7 +416,7 @@ void update_scenario(std::default_random_engine gen,
 
 		if(y<0 && x>0){fi_BU_erro = ((atan(y/x) * 180) / pi) + 360;}
 	
-		printf("fi_BU_erro %f\n  ", fi_BU_erro);
+	//printf("fi_BU_erro %f\n  ", fi_BU_erro);
 
 		dif_BS =360.0;
 		for(int p = 0; p<M_BS+N_BS; p++){
@@ -428,7 +428,7 @@ void update_scenario(std::default_random_engine gen,
 				fiBS = fi_BS[p];
 			}
 
-			if(algorithm == 4){printf("algoritmo 4\n\n");
+			if(algorithm == 4){//printf("algoritmo 4\n\n");
 			
 				if(fabs(367.5-fi_BU_erro)<dif_BS){fiBS = fi_BS[0];}
 	
@@ -439,7 +439,7 @@ void update_scenario(std::default_random_engine gen,
 
 		
 		}
-		printf("fiBSsssss %f\n  ", fiBS);			
+	//printf("fiBSsssss %f\n  ", fiBS);			
 	
 					
 		
@@ -458,47 +458,47 @@ void plot_results(int algorithm, int protocolo, float decaimentoTaxaRx, float ve
 	FILE* arq = fopen(arqname, "w");
 
 	fprintf(arq, "%d ", dmax);
-	printf("dmax %d ", dmax);
+printf("dmax %d ", dmax);
 
 	fprintf(arq, "%d ", algorithm);
-	printf("algorithm %d ", algorithm);
+printf("algorithm %d ", algorithm);
 
 	fprintf(arq, "%d ", protocolo);
-	printf("protocolo %d ", protocolo);
+printf("protocolo %d ", protocolo);
 
 	fprintf(arq, "%f ", decaimentoTaxaRx);
-	printf("decaimentoTaxaRx %f ", decaimentoTaxaRx);
+printf("decaimentoTaxaRx %f ", decaimentoTaxaRx);
 
 	fprintf(arq, "%f ", velocity_USR);
-	printf("velocity_USR %f ", velocity_USR);
+printf("velocity_USR %f ", velocity_USR);
 
 	fprintf(arq, "%f ", mediaErroGPS);
-	printf("velocity_USR %f ", mediaErroGPS);
+printf("velocity_USR %f ", mediaErroGPS);
 
 	fprintf(arq, "%d ", nIA);
-	printf("nIA %d ", nIA);
+printf("nIA %d ", nIA);
 
 	fprintf(arq, "%f ", (double)tIA/(double)limite);
-	printf("tutil %f ", (double)tIA/(double)limite);
+printf("tutil %f ", (double)tIA/(double)limite);
 
 	fprintf(arq, "%d ", tIA);
-	printf("tIA %d ", tIA);
+printf("tIA %d ", tIA);
 
 	//------> DADO DE INTERESSE!!!
 	fprintf(arq, "%f ", capacidade);
-        printf("Cnominal %f ", capacidade);
+       printf("Cnominal %f ", capacidade);
 
 	fprintf(arq, "%f ", capacidadeEf);
-        printf("Cefetiva %f ", capacidadeEf);
+       printf("Cefetiva %f ", capacidadeEf);
 
 	fprintf(arq, "%f ", ZERO);
-        printf("media ZERO %f ", ZERO);
+       printf("media ZERO %f ", ZERO);
 
 	fprintf(arq, "%f ", BEAM);
-        printf("media BEAM %f ", BEAM);
+       printf("media BEAM %f ", BEAM);
 
 	fprintf(arq, "%f\n", BEAMZERO);
-        printf("media BEAMZERO %f\n", BEAMZERO);
+       printf("media BEAMZERO %f\n", BEAMZERO);
 
 
 
@@ -509,10 +509,10 @@ void plot_results(int algorithm, int protocolo, float decaimentoTaxaRx, float ve
 		cnominalSNR = log2((totalSNR/(limite-tIA)) + 1.0);
 	}
 	fprintf(arq, "%f ", cnominalSNR);
-        printf("CnominalSNR %f ", cnominalSNR);
+       printf("CnominalSNR %f ", cnominalSNR);
 
 	fprintf(arq, "%f\n", cnominalSNR * ((limite-tIA)/(double)limite));
-        printf("CefetivaSNR %f\n", cnominalSNR * ((limite-tIA)/(double)limite));*/
+       printf("CefetivaSNR %f\n", cnominalSNR * ((limite-tIA)/(double)limite));*/
 
 	fclose(arq);
 	
@@ -633,9 +633,9 @@ int main(int argc, char *argv[ ])
 	float vet_ray [linha]={0.0};
 	char line[1000];
 	sprintf(line, "rayleigh/rayleigh_v%d.txt", (int)velocity_OBJ);
-	printf(line, "rayleigh/rayleigh_v%d.txt", (int)velocity_OBJ);
+//printf(line, "rayleigh/rayleigh_v%d.txt", (int)velocity_OBJ);
 	distr_ray =fopen(line,"r");
-	printf("%s\n", line);
+//printf("%s\n", line);
 	for(int r=0 ;r<linha; r++){
 
 		fscanf(distr_ray, "%f%*[^\n]%*c",&vet_ray[r]);
@@ -680,8 +680,8 @@ int main(int argc, char *argv[ ])
 				x_update=X;
 				y_update=Y;
 
-				printf("x_update %f\n ",x_update);
-				printf("y_update %f\n ",y_update);
+			//printf("x_update %f\n ",x_update);
+			//printf("y_update %f\n ",y_update);
 			}	
 		}
 
@@ -698,21 +698,21 @@ int main(int argc, char *argv[ ])
 		if(fabs(fi_UB-USRbeam) < 0.01 || fabs(fi_UB-(USRbeam + 360.0)) < 0.01){AF_UE=(M_UE*N_UE);}
 		else{AF_UE= (sin((M_UE/2.0)*Psix_UE)/sin(Psix_UE/2.0))*(sin((N_UE/2.0)*Psiy_UE)/sin(Psiy_UE/2.0));}
 
-		printf("BSbeam %f\n ",BSbeam);
-		printf("USRbeam %f\n ",USRbeam);
+	//printf("BSbeam %f\n ",BSbeam);
+	//printf("USRbeam %f\n ",USRbeam);
 		
 		//###################fast fading###################################
 		if(BSbeam>=0){NbeamBS=((BSbeam/(360/(M_BS+N_BS)))+1);}else{NbeamBS=(((360+BSbeam)/(360/(M_BS+N_BS)))+1);}
 		if(USRbeam>=0){NbeamUSR= ((USRbeam/(360/(M_UE+N_UE)))+1);}else{NbeamUSR=(((360+USRbeam)/(360/(M_UE+N_UE)))+1);}
-		printf("NbeamBS %f\n ",NbeamBS);
-		printf("NbeamUSR %f\n ",NbeamUSR);
+	//printf("NbeamBS %f\n ",NbeamBS);
+	//printf("NbeamUSR %f\n ",NbeamUSR);
 
 		if (godTsimulacao <= 1){	
 			if(protocolo==3){cont_ray++;}
 			if(tempoIA==0){cont_ray++;}
 			int valor_r = (((NbeamBS*10)+ NbeamUSR)*ray)+cont_ray;
 			rayleigh=vet_ray[valor_r];
-			printf("rayleigh %f\n ", rayleigh);
+		//printf("rayleigh %f\n ", rayleigh);
 		}
 
 		//###################################################################
@@ -720,8 +720,8 @@ int main(int argc, char *argv[ ])
 		AF = fabs(AF_BS*AF_UE);
 		AFpuro=AF;
 		if(AF>afmax){afmax=AF;}
-		printf("AF %f\n ",AF);
-		printf("AFmax %f\n ",afmax);
+	//printf("AF %f\n ",AF);
+	//printf("AFmax %f\n ",afmax);
 		AF = fabs(AF_BS*AF_UE)*rayleigh;
 		
 
@@ -748,53 +748,53 @@ int main(int argc, char *argv[ ])
 		{
 			case LOS:
 				//PLos
-				printf("Plos ");
+			//printf("Plos ");
 				PL = pow(10.0,((61.4 + 20*log10(dist) + normallos)*-1.0)/10.0);
-				printf("normal %f ", normallos);
-				printf("PL %f\n ", 10*log10(PL));
+			//printf("normal %f ", normallos);
+			//printf("PL %f\n ", 10*log10(PL));
 				break;
 
 			case NLOS:
-				printf("Pnlos ");
+			//printf("Pnlos ");
 				PL =pow(10.0,((72 + 29.2*log10(dist) + normalnlos)*-1.0)/10.0);
-				printf("normal %f ", normalnlos);
-				printf("PL %f\n ", 10*log10(PL));
+			//printf("normal %f ", normalnlos);
+			//printf("PL %f\n ", 10*log10(PL));
 				break;
 
 			case AUTO:
 				if(0<=real && real<Pout){           //Pout
-					printf("Pout ");
+				//printf("Pout ");
 					PL = 0;
 				} else if(Pout<=real && real<(Pout+Plos)){ //PLos
-					printf("Plos ");
+				//printf("Plos ");
 					PL = pow(10.0,((61.4 + 20*log10(dist) + normallos)*-1.0)/10.0);
-					printf("normal %f ", normallos);
-					printf("PL %f\n ", 10*log10(PL));
+				//printf("normal %f ", normallos);
+				//printf("PL %f\n ", 10*log10(PL));
 				} else if((Pout+Plos)<=real && real<=1){   //Pnlos
-					printf("Pnlos ");
+				//printf("Pnlos ");
 					PL =pow(10.0,((72 + 29.2*log10(dist) + normalnlos)*-1.0)/10.0);
-					printf("normal %f ", normalnlos);
-					printf("PL %f\n ", 10*log10(PL));
+				//printf("normal %f ", normalnlos);
+				//printf("PL %f\n ", 10*log10(PL));
 
 				}
 				break;
 
 			default:
-				printf("Erro: condicao do canal desconhecida.\n");
+			//printf("Erro: condicao do canal desconhecida.\n");
 			exit(1);
 		}
 
 		SNR= (PL*pow(AF,2)*pow(10.0,Pt/10.0))/(M_UE*N_UE*M_BS*N_BS*pow(10.0,NF/10.0)*pow(10.0, TN/10.0)*BW);
-		printf("SNR %f\n ",SNR);
+	//printf("SNR %f\n ",SNR);
 
 
 		if(Tsimulacao==0){SNR=0;}
 
 		if(SNRmax<=SNR){SNRmax=SNR; BeamUSRdados=USRbeam; BeamBSdados=BSbeam;}
 		//if(SNRmax<=SNR){SNRmax=((SNRmax*0.8)+(SNR*0.2)); BeamUSRdados=USRbeam; BeamBSdados=BSbeam;}
-		printf("SNRmax %f\n ",SNRmax);
-		printf("BeamBSdados %f\n ",BeamBSdados);
-		printf("BeamUSRdados %f\n\n\n\n ",BeamUSRdados);
+	//printf("SNRmax %f\n ",SNRmax);
+	//printf("BeamBSdados %f\n ",BeamBSdados);
+	//printf("BeamUSRdados %f\n\n\n\n ",BeamUSRdados);
 
 		//############################random-point##################################
 		
@@ -817,7 +817,7 @@ int main(int argc, char *argv[ ])
                         if(ang_update>360.0){ang_update=ang_update-360.0;}
 //			std::uniform_real_distribution<double> angupdate_rand (0,360);
 //			ang_update = angupdate_rand (gen);
-			printf("ang_update = %f %03.15e %03.15e\n ", ang_update, fabs(dist), (double)dmax);
+		//printf("ang_update = %f %03.15e %03.15e\n ", ang_update, fabs(dist), (double)dmax);
 
 			HIP = velocity_USR/1000;
 			
@@ -825,8 +825,8 @@ int main(int argc, char *argv[ ])
 
 			incY=sin(ang_update*pi/180)*HIP;
 
-			printf("incX = %f\n ", incX);
-			printf("incY = %f\n ", incY);
+		//printf("incX = %f\n ", incX);
+		//printf("incY = %f\n ", incY);
 			if (interIA==1){tempoDADOS=0; interIA=0; tempoIA=1; SNRmax=0; update=1; cont_ray=0; interCONT=0; interSNRmax=0;continue;}
 
 			if (tempoDADOS==1){
@@ -909,32 +909,32 @@ int main(int argc, char *argv[ ])
 			
 					if (contIA != 0){ restoIA = contIA % ((M_BS+N_BS)*(M_UE+N_UE));}
 
-					printf("restoIA %d\n ",restoIA);
+				//printf("restoIA %d\n ",restoIA);
 
 					if(restoIA==0) { beamUSR=0; beamBS=0; nIA++; }
 					if((SNRmax<=pow(10.0,SNRmin/10))&&(restoIA==0)&&(teste==0)&&(Tout>1000)){Tout=0; update=1; teste=1; continue;}
 					if((SNRmax>=pow(10.0,SNRmin/10))&&(restoIA==0)){verificaIA=0; USRbeam=BeamUSRdados; BSbeam=BeamBSdados; restoIA=1; contIA=0; tempoIA=0; tempoDADOS=1; beamUSR=0; beamBS=0; SNR=SNRmax; continue;
 					}else{
-						printf("passei aqui \n\n\n ");
+					//printf("passei aqui \n\n\n ");
 						USRbeam=fi_UE[beamUSR];
 						BSbeam=fi_BS[beamBS];
 		
 						if(beamUSR<(M_UE+N_UE-1)){
 			
 							beamUSR=beamUSR+1;
-						printf("passei aqui \n\n\n ");
+					//printf("passei aqui \n\n\n ");
 		
 						}else{
 	
 							beamBS=beamBS+1;
-							printf("beamBS %d\n\n ",beamBS);
+						//printf("beamBS %d\n\n ",beamBS);
 							beamUSR=0;
-						printf("passei aqui \n\n\n ");
+					//printf("passei aqui \n\n\n ");
 						}
 		
 						contIA++;
 						teste=0;
-						printf("contIA %d\n ",contIA);
+					//printf("contIA %d\n ",contIA);
 					}
 
 			
@@ -943,7 +943,7 @@ int main(int argc, char *argv[ ])
 			
 					if (contIA != 0){restoIA = contIA % (M_UE+N_UE);}
 
-					printf("restoIA %d\n ",restoIA);
+				//printf("restoIA %d\n ",restoIA);
 
 					if(restoIA==0) { beamUSR=0; beamBS=0;  nIA++;}
 					if((SNRmax<=pow(10.0,SNRmin/10))&&(restoIA==0)&&(teste==0)&&(Tout>1000)){Tout=0; update=1; teste=1; continue;}
@@ -964,7 +964,7 @@ int main(int argc, char *argv[ ])
 		
 						contIA++;
 						teste=0;
-						printf("contIA %d\n ",contIA);
+					//printf("contIA %d\n ",contIA);
 					}
 			
 				
@@ -973,7 +973,7 @@ int main(int argc, char *argv[ ])
 
 					if (contIA != 0){restoIA = contIA % ((M_UE+N_UE)*3);}
 
-					printf("restoIA %d\n ",restoIA);
+				//printf("restoIA %d\n ",restoIA);
 				
 					if(restoIA==0) { beamUSR=0; beamBS=0;  adjacente=-(360/(M_BS+N_BS)); nIA++;}
 					if((SNRmax<=pow(10.0,SNRmin/10))&&(restoIA==0)&&(teste==0)&&(Tout>1000)){Tout=0; update=1; teste=1; continue;}
@@ -981,7 +981,7 @@ int main(int argc, char *argv[ ])
 		
 						USRbeam=fi_UE[beamUSR];
 						BSbeam = (fiBS+adjacente);
-						printf("adjacente %f\n ",adjacente);
+					//printf("adjacente %f\n ",adjacente);
 						if(beamUSR<(M_UE+N_UE-1)){
 			
 							beamUSR=beamUSR+1;
@@ -993,7 +993,7 @@ int main(int argc, char *argv[ ])
 		
 						contIA++;
 						teste=0;
-						printf("contIA %d\n ",contIA);
+					//printf("contIA %d\n ",contIA);
 					}
 			
 				
@@ -1003,16 +1003,16 @@ int main(int argc, char *argv[ ])
 
 					if (contIA != 0){restoIA = contIA % ((M_UE+N_UE)*mult);}
 
-					printf("restoIA %d\n ",restoIA);
+				//printf("restoIA %d\n ",restoIA);
 					
 					if(restoIA==0) { beamUSR=0; beamBS=0;  adjacente=-(360/(M_BS+N_BS)); alg=1; nIA++;}
 					if((SNRmax<=pow(10.0,SNRmin/10))&&(restoIA==0)&&(teste==0)&&(Tout>1000)){Tout=0; update=1; teste=1; continue;}
 					if((SNRmax>=pow(10.0,SNRmin/10))&&(restoIA==0)){verificaIA=0; USRbeam=BeamUSRdados; BSbeam=BeamBSdados; restoIA=1; contIA=0; tempoIA=0; tempoDADOS=1; beamUSR=0; beamBS=0; SNR=SNRmax; adjacente=-(360/(M_BS+N_BS)); alg=1; continue; }else{
 		
-						if(alg==1){printf("parte1111111\n ");
+						if(alg==1){//printf("parte1111111\n ");
 							USRbeam=fi_UE[beamUSR];
 							BSbeam = (fiBS+(adjacente*2));
-							printf("adjacente %f\n ",adjacente*2);
+						//printf("adjacente %f\n ",adjacente*2);
 							if(beamUSR<(M_UE+N_UE-1)){
 			
 								beamUSR=beamUSR+1;
@@ -1027,12 +1027,12 @@ int main(int argc, char *argv[ ])
 								if(SNRmax>=pow(10.0,SNRmin/10)){fiBS=BeamBSdados; mult=5;}else{mult=7;}
 							}
 
-						}else{printf("parte2222222222\n ");
+						}else{//printf("parte2222222222\n ");
 					
 							if(max>=pow(10.0,SNRmin/10)){
 								USRbeam=fi_UE[beamUSR];
 								BSbeam = (fiBS+(adjacente));
-								printf("adjacente %f\n ",adjacente);
+							//printf("adjacente %f\n ",adjacente);
 								if(beamUSR<(M_UE+N_UE-1)){
 			
 									beamUSR=beamUSR+1;
@@ -1045,7 +1045,7 @@ int main(int argc, char *argv[ ])
 
 								USRbeam=fi_UE[beamUSR];
 								BSbeam = (fiBS+(adjacente*3));
-								printf("adjacente %f\n ",adjacente);
+							//printf("adjacente %f\n ",adjacente);
 								if(beamUSR<(M_UE+N_UE-1)){
 			
 									beamUSR=beamUSR+1;
@@ -1059,7 +1059,7 @@ int main(int argc, char *argv[ ])
 						}
 						contIA++;
 						teste=0;
-						printf("contIA %d\n ",contIA);
+					//printf("contIA %d\n ",contIA);
 					}
 
 				}else if(algorithm == 4){ //Proposta iterativo
@@ -1067,18 +1067,18 @@ int main(int argc, char *argv[ ])
 
 					if (contIA != 0){restoIA = contIA % ((M_UE+N_UE)*7);}
 
-					printf("restoIA %d\n ",restoIA);
+				//printf("restoIA %d\n ",restoIA);
 
 					if(restoIA==0) { beamUSR=0; beamBS=0;  adjacente=-(360/(M_BS+N_BS)); alg=1; nIA++;}
 					if((SNRmax<=pow(10.0,SNRmin/10))&&(restoIA==0)&&(teste==0)&&(Tout>1000)){Tout=0; update=1; teste=1; continue;}
 					if((SNRmax>=pow(10.0,SNRmin/10))&&(restoIA==0)){verificaIA=0; USRbeam=BeamUSRdados; BSbeam=BeamBSdados; restoIA=1; contIA=0; tempoIA=0; tempoDADOS=1; beamUSR=0; beamBS=0; SNR=SNRmax; adjacente=-(360/(M_BS+N_BS)); alg=1; continue; }else{
 		
-						if(alg==1){printf("parte1111111\n ");
+						if(alg==1){//printf("parte1111111\n ");
 							M_BS=3; 
 							N_BS=3;
 							USRbeam=fi_UE[beamUSR];
 							BSbeam = (fiBS+(adjacente));
-							printf("adjacente %f\n ",adjacente);
+						//printf("adjacente %f\n ",adjacente);
 							if(beamUSR<(M_UE+N_UE-1)){
 			
 								beamUSR=beamUSR+1;
@@ -1094,12 +1094,12 @@ int main(int argc, char *argv[ ])
 								if(SNRmax>=pow(10.0,SNRmin/10)){alg=0; fiBS=BeamBSdados;}
 							}
 
-						}else{printf("parte2222222222\n ");
+						}else{//printf("parte2222222222\n ");
 							M_BS=12;
 							N_BS=12;
 							USRbeam=fi_UE[beamUSR];
 							BSbeam = (fiBS+((adjacente*3)/8));
-							printf("adjacente %f\n ",adjacente);
+						//printf("adjacente %f\n ",adjacente);
 							if(beamUSR<(M_UE+N_UE-1)){
 			
 								beamUSR=beamUSR+1;
@@ -1113,7 +1113,7 @@ int main(int argc, char *argv[ ])
 						}
 						contIA++;
 						teste=1;
-						printf("contIA %d\n ",contIA);
+					//printf("contIA %d\n ",contIA);
 					}
 				
 
@@ -1127,24 +1127,24 @@ int main(int argc, char *argv[ ])
 				if((contDADOS+contIA)<=limite){
 					afmaxDADOS=0;
 					if(BeamMelhorUSR==USRbeam && BeamMelhorBS==BSbeam){certo++;}
-					if(SNR < pow(10.0,10/10)){ZERO++; SNR=0; printf("SNR zerou \n"); 
+					if(SNR < pow(10.0,10/10)){ZERO++; SNR=0;//printf("SNR zerou \n"); 
 						if(BeamMelhorUSR==USRbeam && BeamMelhorBS==BSbeam){certoZERO++;}
 					}
 					USRbeam=BeamUSRdados;
 					BSbeam=BeamBSdados;
 					//totalSNR = totalSNR + SNR;
 					totalCap=totalCap+(log2(SNR +1));
-					printf("SNR %f\n ",SNR);
+				//printf("SNR %f\n ",SNR);
 					contDADOS++;
-				}else{printf("acabou simulação \n ");}
+				}else//printf("acabou simulação \n ");}
 			
 				if (protocolo == 1){
 	
 					continterupcao ++;
 					int restointerupcao = (continterupcaoIA + continterupcao) % intervaloFixoIA;
-					printf("continterupcao %d ", continterupcao);
-					printf("restointerupcao %d ", restointerupcao);
-					printf("intervaloFixoIA %d\n ", intervaloFixoIA);
+				//printf("continterupcao %d ", continterupcao);
+				//printf("restointerupcao %d ", restointerupcao);
+				//printf("intervaloFixoIA %d\n ", intervaloFixoIA);
 					if (restointerupcao==0){interUSRbeam=USRbeam; interBSbeam=BSbeam; continterupcaoIA=0; tempoDADOS=0; interIA=1; tempoIA=0; update=0; continterupcao=0; cont_ray=0;}
 	
 
@@ -1202,9 +1202,9 @@ int main(int argc, char *argv[ ])
 		}
 
 	}
-	printf("contDADOS %d\n ",contDADOS);
+//printf("contDADOS %d\n ",contDADOS);
 	//printf("contador %d\n ",contador);
-	printf("totalCap %f\n ",totalCap);
+//printf("totalCap %f\n ",totalCap);
 
 
 	float avgcapacidade=(totalCap/contDADOS);
@@ -1214,7 +1214,7 @@ int main(int argc, char *argv[ ])
 	float avgBEAMZERO=(float)certoZERO/(float)ZERO;
 
 	if(contIA>=limite){avgcapacidade=0;}
-	printf("avgcapacidade %f\n ",avgcapacidade);
+//printf("avgcapacidade %f\n ",avgcapacidade);
 	plot_results(algorithm, protocolo, decaimentoTaxaRx, velocity_USR, mediaErroGPS, avgcapacidade, avgcapacidadeEf, contadorIA, nIA, totalSNR, avgZERO, avgBEAM, avgBEAMZERO);
 	
 	if(trace) { fclose(tracefd);}
