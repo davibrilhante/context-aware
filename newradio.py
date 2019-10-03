@@ -1,7 +1,7 @@
 import simpy as sp
 from scipy import stats
 import numpy as np
-from subprocess import call
+from subprocess import call, check_output
 import sys
 import simutime as st
 
@@ -179,66 +179,68 @@ class Network(object):
         timeSpent = 0
         neededSSB = 0
         for user in self.inRangeUsers:
-            Pt = ' 1' #' 30'
-            dist = str(self.calcUserDist(user)) 
-            npontos = ' 1' #' 50'
+            Pt = '30'                      #Transmission Power
+            dist = str(self.calcUserDist(user)) #Distanica Usuario x base
+            npontos = '1' #' 50'
             seed = sys.argv[4]
-            NF = ' 5'
-            TN = ' -174'
-            BW = ' 400000000' #1000000000
-            div = ' 4'
-            move = ' 75000'
-            minSNR = ' -5'
-            Tper = ' 1'
-            Tcanal = ' 1'
-            protoID = ' 1'
-            protoParam = ' 500'
-            limite = protoParam # O QUE EH ISSO?
-            tipoErro = ' 1'
-            mediaErroGPS = sys.argv[3]
-            desvErroGPS = ' 10'
+            NF = '5'                       #Noise Figure
+            TN = '-174'                    #Thermal Noise
+            BW = '400000000' #1000000000   #Bandwidth
+            div = '4'                      #antenna array divisor of wavelength
+            move = '75000'                 #Time to keep a path
+            minSNR = '-5'                  #Minimal signal to detection
+            Tper = '1'                     #
+            Tcanal = '1'                   #
+            protoID = '1'                  #Protocol Type: 1 - Fixed Interval (static scenario) | 2 - Reactive
+            protoParam = '500'             #In protocol type 1 - Period of IA
+            limite = protoParam             #Simulation Time
+            tipoErro = '1'                 #GPS Error Type: 1 - Normal Distribution | 2 - Uniform Distribution 
+            mediaErroGPS = sys.argv[3]      #
+            desvErroGPS = '10'             #
             alg = algorithm #sys.argv[1]
-            log= ' 1'
-            velocityUSR = ' 0'
-            velocityOBJ = ' 5'
+            log= '1'
+            velocityUSR = '0'
+            velocityOBJ = '5'
             decaimentoTaxaRx = protoParam # O QUE EH ISSO? 
             quedaTaxaRx = protoParam #O QUE EH ISSO?
-            fastIA = ' 0'
-            limFastIA = ' 0'
+            fastIA = '0'
+            limFastIA = '0'
             condCanal = condition #sys.argv[2]
             angle = str(self.calcUserAngle(user))
             bs_array = str(self.antennaArray[0])
             ue_array = str(user.antennaArray[0])
-            arqname = ' lixeirao'#/dev/null'#' initial-access-'+alg+'-'+condCanal+'-'+mediaErroGPS+'-'+seed
+            arqname = 'lixeirao'#/dev/null'#' initial-access-'+alg+'-'+condCanal+'-'+mediaErroGPS+'-'+seed
             
 
-            command = ('./initial-access'+Pt+' '+dist+npontos+' '+seed+arqname+NF+TN+BW+div+move+minSNR+Tper+Tcanal+limite+tipoErro
-                      +' '+mediaErroGPS+desvErroGPS+' '+alg+log+velocityUSR+velocityOBJ+protoID+decaimentoTaxaRx+quedaTaxaRx+fastIA+limFastIA
-                      +' '+condCanal+' '+condCanal+' '+angle+' '+bs_array+' '+ue_array)
-            print(command)
+            #command = ('./initial-access'+Pt+' '+dist+npontos+' '+seed+arqname+NF+TN+BW+div+move+minSNR+Tper+Tcanal+limite+tipoErro
+            command = [Pt,dist,npontos,seed,arqname,NF,TN,BW,div,move,minSNR,Tper,Tcanal,limite,tipoErro,
+                      mediaErroGPS,desvErroGPS,alg,log,velocityUSR,velocityOBJ,protoID,decaimentoTaxaRx,quedaTaxaRx,fastIA,limFastIA,
+                      condCanal,condCanal,angle,bs_array,ue_array]
+            #print(command)
             try:
-                result = call(command, shell=True)
+                #result = call(command, shell=True)
+                result = check_output(['./initial-access']+command)
+                #print(result)
+                '''
                 if result < 0:
                     print("initial-access was terminated by signal", -result)#, file=sys.stderr)
                 else:
-                    print("initial-access returned", result, file=sys.stderr)
+                    print("initial-access returned")#, result, file=sys.stderr)
+                    print(result)
+                    f = open('lixeirao')
+                    line = f.readline()
+                    output = line.strip()
+                    print(output)
+                '''
             except:
                 print("Execution failed:")#, e, file=sys.stderr)
-
-            if algorithm == '0': #exhaustive
-                1
-
-            #The feedback will be sent in the next RACH Opportunity and the 
-            #other UE will use the rest of Burst Set to download data from gNB
-            elif algorithm == '1': #iterative
-                neededSSB = user.numberBeams*(self.numberBeams/2) + 2
-
-            elif algorithm == '2': #gps+iterative
-                neededSSB = user.numberBeams*(self.numberBeams/4) + 4
-
-            elif algorithm == '3': #refined+search
-                neededSSB = 5
+            
+            result = result.decode('utf-8').split()
+            nSlotsIA = int(result[result.index('tIA')+1])
+            nominalCapacity = float(result[result.index('Cnominal')+1])
+            print(nSlotsIA, nominalCapacity)
         self.inRangeUsers=[]
+        return [nSlotsIA, nominalCapacity]
             
 
     def associationRequest(self,user):
@@ -249,9 +251,9 @@ class Network(object):
         if algorithm == '0':
             self.inRangeUsers.append(user)
             self.initialAccess(algorithm, condition)
-            #UE joins the network before the nearest SSB
-            if self.env.now < (self.ssbIndex)*BURST_PERIOD:
-                print('\033[94m'+"UE joined the network before a SSB"+'\033[0m')
+            #UE joins the network during the nearest SSB
+            if self.env.now < (self.ssbIndex)*BURST_PERIOD+BURST_DURATION:
+                print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
                 #Nearest SSB is really a SSB
                 if self.ssbIndex % (RACH_PERIOD/BURST_PERIOD) != 0:
                     print('\033[92m'+"Condition: ",int(self.env.now), (self.ssbIndex)*BURST_PERIOD,'\033[0m')
@@ -259,22 +261,16 @@ class Network(object):
                 else:
                     print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
 
-            #UE joins the network during the nearest BURST
-            elif self.env.now >= (self.ssbIndex-1)*BURST_PERIOD and self.env.now < (self.ssbIndex-1)*BURST_PERIOD + BURST_DURATION:
-                print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
+            #UE joins the network after/before the nearest BURST
+            elif self.env.now >= (self.ssbIndex)*BURST_PERIOD + BURST_DURATION:
+                print('\033[94m'+"UE joined the network before a SSB"+'\033[0m')
                 #This SSB happening now is really a SSB
-                if self.ssbIndex-1 % (RACH_PERIOD/BURST_PERIOD) != 0:
+                if self.ssbIndex+1 % (RACH_PERIOD/BURST_PERIOD) != 0:
                     print('\033[94m'+"Now: ",int(self.env.now), "Next SSB:",(self.ssbIndex)*BURST_PERIOD,'\033[0m')
                     #How many ss blocks are necessary to complete the sweeping?
-                    beginingSSB = (self.ssbIndex)*BURST_PERIOD  
                 #This SSB happening now actually is a RACH Opportunity
                 else:
                     print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
-
-            #UE joins the network between the nearest BURST and the next RACH
-            #or between next two BURSTS
-            else:
-                1
 
         #The search is not exhaustive
         else:
