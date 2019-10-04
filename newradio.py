@@ -100,8 +100,8 @@ class Network(object):
         self.antennaGain = antennaArray[0]*antennaArray[1]
         self.associatedUsers = []
         self.inRangeUsers = []
-        self.frameIndex = 1
-        self.ssbIndex = 1
+        self.frameIndex = 0
+        self.ssbIndex = 0
         #Defines the position of the BS at the spatial occupation matrix
         SPACE[ENV_RADIUS-1][ENV_RADIUS-1]=1
         self.subcarrierSpacing = 120
@@ -124,8 +124,8 @@ class Network(object):
         rachPeriod = 40 milliseconds
         '''
         while True:
-            if (self.ssbIndex % (rachPeriod/burstPeriod)) != 0:
-                print('A new burst set is starting at %d and it is the %d ss burst' % (self.env.now, self.ssbIndex))
+            if (self.frameIndex % (rachPeriod/FRAME_DURATION) != 0) and (self.frameIndex != 1):
+                print('A new burst set is starting at %d and it is the %d ss burst in %d frame' % (self.env.now, self.ssbIndex, self.frameIndex))
                 yield self.env.timeout(burstDuration)
                 print('The burst set has finished at %d' % self.env.now)
                 yield self.env.timeout(burstPeriod - burstDuration)
@@ -133,10 +133,12 @@ class Network(object):
                 yield self.env.timeout(burstPeriod)
 
     def updateFrame(self):
+        #self.frameIndex+=1
         while True:
-            yield self.env.timeout(FRAME_DURATION)
+            print('Frame:',self.frameIndex,'in',self.env.now)
             self.frameIndex+=1
-            if self.frameIndex % 2 == 1:
+            yield self.env.timeout(FRAME_DURATION)
+            if self.frameIndex % (BURST_PERIOD/FRAME_DURATION) == 0:
                 self.ssbIndex+=1
 
     def rachOpportunity(self, rachDuration, rachPeriod):
@@ -152,7 +154,7 @@ class Network(object):
             if self.frameIndex==1:
                 yield self.env.timeout(rachPeriod)
             else:
-                print('A new rach opportunity is starting at %d and it is the %d ss burst' % (self.env.now, self.ssbIndex))
+                print('A new rach opportunity is starting at %d and it is the %d ss burst in %d frame' % (self.env.now, self.ssbIndex, self.frameIndex))
                 yield self.env.timeout(rachDuration)
                 print('The rach opportunity  has finished at %d' % self.env.now)
                 yield self.env.timeout(rachPeriod - rachDuration)
@@ -236,9 +238,11 @@ class Network(object):
                 print("Execution failed:")#, e, file=sys.stderr)
             
             result = result.decode('utf-8').split()
-            nSlotsIA = int(result[result.index('tIA')+1])
+            if algorithm == '0' : nSlotsIA = int(result[result.index('tIA')+1]) - 1
+            else : nSlotsIA = int(result[result.index('tIA')+1])
             nominalCapacity = float(result[result.index('Cnominal')+1])
-            print(nSlotsIA, nominalCapacity)
+            print('SS Blocks to Initial Access:',nSlotsIA)
+            print('Nominal Channel Capacity:', nominalCapacity)
         self.inRangeUsers=[]
         return [nSlotsIA, nominalCapacity]
             
@@ -251,26 +255,31 @@ class Network(object):
         if algorithm == '0':
             self.inRangeUsers.append(user)
             self.initialAccess(algorithm, condition)
+
             #UE joins the network during the nearest SSB
-            if self.env.now < (self.ssbIndex)*BURST_PERIOD+BURST_DURATION:
-                print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
+            if (self.env.now >= self.ssbIndex*BURST_PERIOD) and (self.env.now < (self.ssbIndex*BURST_PERIOD)+BURST_DURATION):
                 #Nearest SSB is really a SSB
                 if self.ssbIndex % (RACH_PERIOD/BURST_PERIOD) != 0:
+                    print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
                     print('\033[92m'+"Condition: ",int(self.env.now), (self.ssbIndex)*BURST_PERIOD,'\033[0m')
-                #Nearest SSB actually is a RACH Opportunity
+                #Nearest SSB actually is a RACH Opportunity - OK
                 else:
-                    print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+                    print('\033[94m'+"UE joined the network during a RACH"+'\033[0m')
+                    print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
 
             #UE joins the network after/before the nearest BURST
-            elif self.env.now >= (self.ssbIndex)*BURST_PERIOD + BURST_DURATION:
-                print('\033[94m'+"UE joined the network before a SSB"+'\033[0m')
-                #This SSB happening now is really a SSB
-                if self.ssbIndex+1 % (RACH_PERIOD/BURST_PERIOD) != 0:
-                    print('\033[94m'+"Now: ",int(self.env.now), "Next SSB:",(self.ssbIndex)*BURST_PERIOD,'\033[0m')
+            else:
+                if self.ssbIndex % (RACH_PERIOD/BURST_PERIOD) == 0:
+                    print('\033[94m'+"UE joined the network after a RACH"+'\033[0m',self.ssbIndex)
+                    print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+                    #print('\033[94m'+"Now: ",int(self.env.now), "Next SSB:",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
                     #How many ss blocks are necessary to complete the sweeping?
-                #This SSB happening now actually is a RACH Opportunity
+                elif (self.ssbIndex+1) % (RACH_PERIOD/BURST_PERIOD) == 0:
+                    print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', self.ssbIndex)
+                    print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+2)*BURST_PERIOD,'\033[0m')
                 else:
-                    print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+                    print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', self.ssbIndex)
+                    print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
 
         #The search is not exhaustive
         else:
