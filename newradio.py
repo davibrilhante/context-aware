@@ -241,8 +241,8 @@ class Network(object):
             if algorithm == '0' : nSlotsIA = int(result[result.index('tIA')+1]) - 1
             else : nSlotsIA = int(result[result.index('tIA')+1])
             nominalCapacity = float(result[result.index('Cnominal')+1])
-            print('SS Blocks to Initial Access:',nSlotsIA)
-            print('Nominal Channel Capacity:', nominalCapacity)
+            #print('SS Blocks to Initial Access:',nSlotsIA)
+            #print('Nominal Channel Capacity:', nominalCapacity)
         self.inRangeUsers=[]
         return [nSlotsIA, nominalCapacity]
             
@@ -251,30 +251,48 @@ class Network(object):
         algorithm = sys.argv[1]
         condition = sys.argv[2]
 
+        print('================================================================')
+        self.inRangeUsers.append(user)
+        nSlotsIA, nominalCapacity = self.initialAccess(algorithm, condition)
+        print('SS Blocks to Initial Access:',nSlotsIA)
+        print('Nominal Channel Capacity:', nominalCapacity)
+
         #The search is exhaustive, so the search is a little different
         if algorithm == '0':
-            self.inRangeUsers.append(user)
-            self.initialAccess(algorithm, condition)
-
+            ratio = (RACH_PERIOD/BURST_PERIOD)
             #UE joins the network during the nearest SSB
             if (self.env.now >= self.ssbIndex*BURST_PERIOD) and (self.env.now < (self.ssbIndex*BURST_PERIOD)+BURST_DURATION):
                 #Nearest SSB is really a SSB
-                if self.ssbIndex % (RACH_PERIOD/BURST_PERIOD) != 0:
+                if self.ssbIndex % ratio != 0:
                     print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
                     print('\033[92m'+"Condition: ",int(self.env.now), (self.ssbIndex)*BURST_PERIOD,'\033[0m')
+                    ssblock = int(round(((self.env.now - self.ssbIndex*BURST_PERIOD)/self.numerology['ofdmSymbolDuration']),0))
+                    remainingSSBlocks = int(self.numerology['ssblockMapping'][ssblock:].count(1)/4) #ssblocklength 4 symbols
+                    if remainingSSBlocks >= nSlotsIA:
+                        IAtime = (self.ssbIndex+(ratio-self.ssbIndex%ratio))*BURST_PERIOD + BURST_DURATION - self.env.now
+                    else:
+                        remainingSlots = (nSlotsIA - remainingSSBlocks)
+                        needSSB = np.ceil(remainingSlots/self.numerology['ssblocks'])
+                        print(remainingSlots, needSSB)
+                        IAtime = (self.ssbIndex*BURST_PERIOD + BURST_DURATION - self.env.now)\
+                                    + (ratio - (self.ssbIndex % ratio))*BURST_PERIOD #+ BURST_DURATION
+                        if needSSB > (ratio - (self.ssbIndex % ratio) - 1):
+                            for i in range(int(np.ceil(needSSB/(ratio-1)))):
+                                IAtime += BURST_PERIOD*ratio
+                    print('IA finished in:',IAtime,'at',self.env.now+IAtime)
                 #Nearest SSB actually is a RACH Opportunity - OK
                 else:
+                    ssBurtsTaken = nSlotsIA/self.numerology['ssblocks']
                     print('\033[94m'+"UE joined the network during a RACH"+'\033[0m')
                     print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
 
             #UE joins the network after/before the nearest BURST
             else:
-                if self.ssbIndex % (RACH_PERIOD/BURST_PERIOD) == 0:
+                ssBurstsTaken = nSlotsIA/self.numerology['ssblocks']
+                if self.ssbIndex % ratio == 0:
                     print('\033[94m'+"UE joined the network after a RACH"+'\033[0m',self.ssbIndex)
                     print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
-                    #print('\033[94m'+"Now: ",int(self.env.now), "Next SSB:",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
-                    #How many ss blocks are necessary to complete the sweeping?
-                elif (self.ssbIndex+1) % (RACH_PERIOD/BURST_PERIOD) == 0:
+                elif (self.ssbIndex+1) % ratio == 0:
                     print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', self.ssbIndex)
                     print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+2)*BURST_PERIOD,'\033[0m')
                 else:
@@ -293,6 +311,7 @@ class Network(object):
                 self.initialAccess(algorithm, condition)
             else:
                 1
+        print('================================================================')
 
 class User(object):
     def __init__(self, radius, antennaArray):
@@ -354,7 +373,7 @@ if __name__ == "__main__":
     The user mean user arrival/inter-arrival rate, i.e. 1 user per arrival 
     rate, in seconds
     """
-    arrivalRate = st.seconds(1).micro() 
+    arrivalRate = st.seconds(0.1).micro() 
     skipRate = arrivalRate
     activeUsers = [] 
     """
