@@ -19,8 +19,6 @@ python3 newradio.py 0 1 10 1
 ```
 means that the code will run with exaustive algorithm (0), LoS condition (1), 10 m of average GPS error and seed 1.
 
-## Reference
+## Reference and License
 
-If you use any data or code, please cite.
-
-## License
+This code is licensed under GNU GPL v3. If you use any data or code contained in this repository, please cite and notify the authors.
