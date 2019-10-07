@@ -16,7 +16,7 @@ FRAME_DURATION = st.milliseconds(10).micro()
 SUBFRAME_DURATION = st.milliseconds(1).micro()
 BURST_DURATION = st.milliseconds(5).micro()
 BURST_PERIOD = st.milliseconds(20).micro()
-RACH_PERIOD = st.milliseconds(40).micro()
+RACH_PERIOD = st.milliseconds(80).micro()
 SIM_DURATION = st.seconds(10).micro()
 LTE_RTT = st.milliseconds(1).micro()
 ENV_RADIUS = 50 #meters
@@ -279,25 +279,46 @@ class Network(object):
                         if needSSB > (ratio - (self.ssbIndex % ratio) - 1):
                             for i in range(int(np.ceil(needSSB/(ratio-1)))):
                                 IAtime += BURST_PERIOD*ratio
-                    print('IA finished in:',IAtime,'at',self.env.now+IAtime)
                 #Nearest SSB actually is a RACH Opportunity - OK
                 else:
-                    ssBurtsTaken = nSlotsIA/self.numerology['ssblocks']
+                    ssBurstsTaken = nSlotsIA/self.numerology['ssblocks']
                     print('\033[94m'+"UE joined the network during a RACH"+'\033[0m')
                     print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+                    #         |-------- TIME UNTIL THE RACHE END --------|   |-----NEXT BURSTS-----|  |--NEXT RACH--|
+                    IAtime = (self.ssbIndex+1)*BURST_PERIOD - self.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+                    if ssBurstsTaken > (ratio-(self.ssbIndex%ratio)-1):
+                        for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                            IAtime += ratio*(BURST_PERIOD)
 
+            
             #UE joins the network after/before the nearest BURST
             else:
                 ssBurstsTaken = nSlotsIA/self.numerology['ssblocks']
                 if self.ssbIndex % ratio == 0:
                     print('\033[94m'+"UE joined the network after a RACH"+'\033[0m',self.ssbIndex)
                     print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+                    IAtime = (self.ssbIndex+1)*BURST_PERIOD - self.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+                    if ssBurstsTaken > (ratio-(self.ssbIndex%ratio)-1):
+                        for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                            IAtime += ratio*(BURST_PERIOD)
+                    
                 elif (self.ssbIndex+1) % ratio == 0:
                     print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', self.ssbIndex)
                     print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+2)*BURST_PERIOD,'\033[0m')
+                    IAtime = (self.ssbIndex+2)*BURST_PERIOD - self.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+                    if ssBurstsTaken > (ratio-(self.ssbIndex%ratio)-1):
+                        for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                            IAtime += ratio*(BURST_PERIOD)
+                    
                 else:
                     print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', self.ssbIndex)
                     print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+                    IAtime = (self.ssbIndex+1)*BURST_PERIOD - self.env.now + (ratio-(self.ssbIndex%ratio)-1)*BURST_PERIOD + BURST_DURATION
+                    if ssBurstsTaken > (ratio-(self.ssbIndex%ratio)-1):
+                        for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                            IAtime += ratio*(BURST_PERIOD)
+
+            print('IA finished in:',IAtime,'at',self.env.now+IAtime)
 
         #The search is not exhaustive
         else:
