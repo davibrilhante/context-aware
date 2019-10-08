@@ -89,7 +89,147 @@ def numerology(subcarrierSpacing, ssburstLength=None):
         print("Not a valid subcarrier spacing passed!")
         return -1
 
+def ExhaustiveNonReciprocity(network,condition):
+    nSlotsIA, nominalCapacity, beamNet, beamUser= network.initialAccess('0', condition)
+    print('SS Blocks to Initial Access:',nSlotsIA)
+    print('Nominal Channel Capacity:', nominalCapacity)
 
+    ratio = (RACH_PERIOD/BURST_PERIOD)
+    #UE joins the network during the nearest SSB
+    if (network.env.now >= network.ssbIndex*BURST_PERIOD) and (network.env.now < (network.ssbIndex*BURST_PERIOD)+BURST_DURATION):
+        #Nearest SSB is really a SSB
+        if network.ssbIndex % ratio != 0:
+            print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
+            print('\033[92m'+"Condition: ",int(network.env.now), (network.ssbIndex)*BURST_PERIOD,'\033[0m')
+            ssblock = int(round(((network.env.now - network.ssbIndex*BURST_PERIOD)/network.numerology['ofdmSymbolDuration']),0))
+            remainingSSBlocks = int(network.numerology['ssblockMapping'][ssblock:].count(1)/4) #ssblocklength 4 symbols
+            if remainingSSBlocks >= nSlotsIA:
+                IAtime = (network.ssbIndex+(ratio-network.ssbIndex%ratio))*BURST_PERIOD + BURST_DURATION - network.env.now
+            else:
+                remainingSlots = (nSlotsIA - remainingSSBlocks)
+                needSSB = np.ceil(remainingSlots/network.numerology['ssblocks'])
+                print(remainingSlots, needSSB)
+                IAtime = (network.ssbIndex*BURST_PERIOD + BURST_DURATION - network.env.now)\
+                            + (ratio - (network.ssbIndex % ratio))*BURST_PERIOD #+ BURST_DURATION
+                if needSSB > (ratio - (network.ssbIndex % ratio) - 1):
+                    for i in range(int(np.ceil(needSSB/(ratio-1)))):
+                        IAtime += BURST_PERIOD*ratio
+        #Nearest SSB actually is a RACH Opportunity - OK
+        else:
+            ssBurstsTaken = nSlotsIA/network.numerology['ssblocks']
+            print('\033[94m'+"UE joined the network during a RACH"+'\033[0m')
+            print('\033[92m'+"It will wait until the next SSB in",(network.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            #         |-------- TIME UNTIL THE RACHE END --------|   |-----NEXT BURSTS-----|  |--NEXT RACH--|
+            IAtime = (network.ssbIndex+1)*BURST_PERIOD - network.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+
+    
+    #UE joins the network after/before the nearest BURST
+    else:
+        ssBurstsTaken = nSlotsIA/network.numerology['ssblocks']
+        if network.ssbIndex % ratio == 0:
+            print('\033[94m'+"UE joined the network after a RACH"+'\033[0m',network.ssbIndex)
+            print('\033[92m'+"It will wait until the next SSB in",(network.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            IAtime = (network.ssbIndex+1)*BURST_PERIOD - network.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+            
+        elif (network.ssbIndex+1) % ratio == 0:
+            print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', network.ssbIndex)
+            print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(network.ssbIndex+2)*BURST_PERIOD,'\033[0m')
+            IAtime = (network.ssbIndex+2)*BURST_PERIOD - network.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+            
+        else:
+            print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', network.ssbIndex)
+            print('\033[92m'+"It will wait until the next SSB in",(network.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            IAtime = (network.ssbIndex+1)*BURST_PERIOD - network.env.now + (ratio-(network.ssbIndex%ratio)-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+
+    return IAtime
+
+
+def ExhaustivePartialReciprocity(network, condition):
+    '''
+    In partial reciprocity the network sweeps its antennas beams meanwhile the 
+    user stays sending RACH preamble
+    '''
+    nSlotsIA, nominalCapacity, beamNet, beamUser= network.initialAccess('0', condition)
+    print('SS Blocks to Initial Access:',nSlotsIA)
+    print('Nominal Channel Capacity:', nominalCapacity)
+
+    ratio = (RACH_PERIOD/BURST_PERIOD)
+    #UE joins the network during the nearest SSB
+    if (network.env.now >= network.ssbIndex*BURST_PERIOD) and (network.env.now < (network.ssbIndex*BURST_PERIOD)+BURST_DURATION):
+        #Nearest SSB is really a SSB
+        if network.ssbIndex % ratio != 0:
+            print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
+            print('\033[92m'+"Condition: ",int(network.env.now), (network.ssbIndex)*BURST_PERIOD,'\033[0m')
+            ssblock = int(round(((network.env.now - network.ssbIndex*BURST_PERIOD)/network.numerology['ofdmSymbolDuration']),0))
+            remainingSSBlocks = int(network.numerology['ssblockMapping'][ssblock:].count(1)/4) #ssblocklength 4 symbols
+            if remainingSSBlocks >= nSlotsIA:
+                IAtime = (network.ssbIndex+(ratio-network.ssbIndex%ratio-1))*BURST_PERIOD - network.env.now
+                IAtime += 
+            else:
+                remainingSlots = (nSlotsIA - remainingSSBlocks)
+                needSSB = np.ceil(remainingSlots/network.numerology['ssblocks'])
+                print(remainingSlots, needSSB)
+                IAtime = (network.ssbIndex*BURST_PERIOD + BURST_DURATION - network.env.now)\
+                            + (ratio - (network.ssbIndex % ratio))*BURST_PERIOD #+ BURST_DURATION
+                if needSSB > (ratio - (network.ssbIndex % ratio) - 1):
+                    for i in range(int(np.ceil(needSSB/(ratio-1)))):
+                        IAtime += BURST_PERIOD*ratio
+        #Nearest SSB actually is a RACH Opportunity - OK
+        else:
+            ssBurstsTaken = nSlotsIA/network.numerology['ssblocks']
+            print('\033[94m'+"UE joined the network during a RACH"+'\033[0m')
+            print('\033[92m'+"It will wait until the next SSB in",(network.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            #         |-------- TIME UNTIL THE RACHE END --------|   |-----NEXT BURSTS-----|  |--NEXT RACH--|
+            IAtime = (network.ssbIndex+1)*BURST_PERIOD - network.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+
+    
+    #UE joins the network after/before the nearest BURST
+    else:
+        ssBurstsTaken = nSlotsIA/network.numerology['ssblocks']
+        if network.ssbIndex % ratio == 0:
+            print('\033[94m'+"UE joined the network after a RACH"+'\033[0m',network.ssbIndex)
+            print('\033[92m'+"It will wait until the next SSB in",(network.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            IAtime = (network.ssbIndex+1)*BURST_PERIOD - network.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+            
+        elif (network.ssbIndex+1) % ratio == 0:
+            print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', network.ssbIndex)
+            print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(network.ssbIndex+2)*BURST_PERIOD,'\033[0m')
+            IAtime = (network.ssbIndex+2)*BURST_PERIOD - network.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+            
+        else:
+            print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', network.ssbIndex)
+            print('\033[92m'+"It will wait until the next SSB in",(network.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            IAtime = (network.ssbIndex+1)*BURST_PERIOD - network.env.now + (ratio-(network.ssbIndex%ratio)-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+
+    return IAtime
+
+
+def ExhaustiveFullReciprocity(network, condition):
+    nSlotsIA, nominalCapacity, beamNet, beamUser= network.initialAccess('0', condition)
 
 
 class Network(object):
@@ -220,104 +360,37 @@ class Network(object):
                       condCanal,condCanal,angle,bs_array,ue_array]
             #print(command)
             try:
-                #result = call(command, shell=True)
                 result = check_output(['./initial-access']+command)
-                #print(result)
-                '''
-                if result < 0:
-                    print("initial-access was terminated by signal", -result)#, file=sys.stderr)
-                else:
-                    print("initial-access returned")#, result, file=sys.stderr)
-                    print(result)
-                    f = open('lixeirao')
-                    line = f.readline()
-                    output = line.strip()
-                    print(output)
-                '''
             except:
                 print("Execution failed:")#, e, file=sys.stderr)
             
             result = result.decode('utf-8').split()
+            #print(result)
             if algorithm == '0' : nSlotsIA = int(result[result.index('tIA')+1]) - 1
             else : nSlotsIA = int(result[result.index('tIA')+1])
             nominalCapacity = float(result[result.index('Cnominal')+1])
+            beamNet = int(float(result[result.index('BSbeam')+1])*self.numberBeams/360)
+            beamUser = int(float(result[result.index('USRbeam')+1])*user.numberBeams/360)
             #print('SS Blocks to Initial Access:',nSlotsIA)
             #print('Nominal Channel Capacity:', nominalCapacity)
         self.inRangeUsers=[]
-        return [nSlotsIA, nominalCapacity]
+        return [nSlotsIA, nominalCapacity, beamNet, beamUser]
             
 
     def associationRequest(self,user):
         algorithm = sys.argv[1]
         condition = sys.argv[2]
+        reciprocity = '0' #
 
         print('================================================================')
         self.inRangeUsers.append(user)
-        nSlotsIA, nominalCapacity = self.initialAccess(algorithm, condition)
-        print('SS Blocks to Initial Access:',nSlotsIA)
-        print('Nominal Channel Capacity:', nominalCapacity)
 
         #The search is exhaustive, so the search is a little different
         if algorithm == '0':
-            ratio = (RACH_PERIOD/BURST_PERIOD)
-            #UE joins the network during the nearest SSB
-            if (self.env.now >= self.ssbIndex*BURST_PERIOD) and (self.env.now < (self.ssbIndex*BURST_PERIOD)+BURST_DURATION):
-                #Nearest SSB is really a SSB
-                if self.ssbIndex % ratio != 0:
-                    print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
-                    print('\033[92m'+"Condition: ",int(self.env.now), (self.ssbIndex)*BURST_PERIOD,'\033[0m')
-                    ssblock = int(round(((self.env.now - self.ssbIndex*BURST_PERIOD)/self.numerology['ofdmSymbolDuration']),0))
-                    remainingSSBlocks = int(self.numerology['ssblockMapping'][ssblock:].count(1)/4) #ssblocklength 4 symbols
-                    if remainingSSBlocks >= nSlotsIA:
-                        IAtime = (self.ssbIndex+(ratio-self.ssbIndex%ratio))*BURST_PERIOD + BURST_DURATION - self.env.now
-                    else:
-                        remainingSlots = (nSlotsIA - remainingSSBlocks)
-                        needSSB = np.ceil(remainingSlots/self.numerology['ssblocks'])
-                        print(remainingSlots, needSSB)
-                        IAtime = (self.ssbIndex*BURST_PERIOD + BURST_DURATION - self.env.now)\
-                                    + (ratio - (self.ssbIndex % ratio))*BURST_PERIOD #+ BURST_DURATION
-                        if needSSB > (ratio - (self.ssbIndex % ratio) - 1):
-                            for i in range(int(np.ceil(needSSB/(ratio-1)))):
-                                IAtime += BURST_PERIOD*ratio
-                #Nearest SSB actually is a RACH Opportunity - OK
-                else:
-                    ssBurstsTaken = nSlotsIA/self.numerology['ssblocks']
-                    print('\033[94m'+"UE joined the network during a RACH"+'\033[0m')
-                    print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
-                    #         |-------- TIME UNTIL THE RACHE END --------|   |-----NEXT BURSTS-----|  |--NEXT RACH--|
-                    IAtime = (self.ssbIndex+1)*BURST_PERIOD - self.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
-                    if ssBurstsTaken > (ratio-(self.ssbIndex%ratio)-1):
-                        for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
-                            IAtime += ratio*(BURST_PERIOD)
-
+            if reciprocity == '0': IAtime = ExhaustiveNonReciprocity(self, condition)
+            elif reciprocity == '1': IAtime = ExhaustivePartialReciprocity(self, condition)
+            elif reciprocity == '2': IAtime = ExhaustiveFullReciprocity(self, condition)
             
-            #UE joins the network after/before the nearest BURST
-            else:
-                ssBurstsTaken = nSlotsIA/self.numerology['ssblocks']
-                if self.ssbIndex % ratio == 0:
-                    print('\033[94m'+"UE joined the network after a RACH"+'\033[0m',self.ssbIndex)
-                    print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
-                    IAtime = (self.ssbIndex+1)*BURST_PERIOD - self.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
-                    if ssBurstsTaken > (ratio-(self.ssbIndex%ratio)-1):
-                        for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
-                            IAtime += ratio*(BURST_PERIOD)
-                    
-                elif (self.ssbIndex+1) % ratio == 0:
-                    print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', self.ssbIndex)
-                    print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(self.ssbIndex+2)*BURST_PERIOD,'\033[0m')
-                    IAtime = (self.ssbIndex+2)*BURST_PERIOD - self.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
-                    if ssBurstsTaken > (ratio-(self.ssbIndex%ratio)-1):
-                        for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
-                            IAtime += ratio*(BURST_PERIOD)
-                    
-                else:
-                    print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', self.ssbIndex)
-                    print('\033[92m'+"It will wait until the next SSB in",(self.ssbIndex+1)*BURST_PERIOD,'\033[0m')
-                    IAtime = (self.ssbIndex+1)*BURST_PERIOD - self.env.now + (ratio-(self.ssbIndex%ratio)-1)*BURST_PERIOD + BURST_DURATION
-                    if ssBurstsTaken > (ratio-(self.ssbIndex%ratio)-1):
-                        for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
-                            IAtime += ratio*(BURST_PERIOD)
-
             print('IA finished in:',IAtime,'at',self.env.now+IAtime)
 
         #The search is not exhaustive
