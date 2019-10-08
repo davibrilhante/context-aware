@@ -451,54 +451,57 @@ void update_scenario(std::default_random_engine gen,
 
 //#########################################################################################################
 
-void plot_results(int algorithm, int protocolo, float decaimentoTaxaRx, float velocity_USR, float mediaErroGPS, float capacidade, float capacidadeEf, int tIA, int nIA, double totalSNR, float ZERO, float BEAM, float BEAMZERO)
+void plot_results(int algorithm, int protocolo, float decaimentoTaxaRx, float velocity_USR, float mediaErroGPS, float capacidade, float capacidadeEf, int tIA, int nIA, double totalSNR, float ZERO, float BEAM, float BEAMZERO, float beamBS, float beamUSR)
 {
 
 	
 	FILE* arq = fopen(arqname, "w");
 
 	fprintf(arq, "%d ", dmax);
-printf("dmax %d ", dmax);
+    printf("dmax %d ", dmax);
 
 	fprintf(arq, "%d ", algorithm);
-printf("algorithm %d ", algorithm);
+    printf("algorithm %d ", algorithm);
 
 	fprintf(arq, "%d ", protocolo);
-printf("protocolo %d ", protocolo);
+    printf("protocolo %d ", protocolo);
 
 	fprintf(arq, "%f ", decaimentoTaxaRx);
-printf("decaimentoTaxaRx %f ", decaimentoTaxaRx);
+    printf("decaimentoTaxaRx %f ", decaimentoTaxaRx);
 
 	fprintf(arq, "%f ", velocity_USR);
-printf("velocity_USR %f ", velocity_USR);
+    printf("velocity_USR %f ", velocity_USR);
 
 	fprintf(arq, "%f ", mediaErroGPS);
-printf("velocity_USR %f ", mediaErroGPS);
+    printf("velocity_USR %f ", mediaErroGPS);
 
 	fprintf(arq, "%d ", nIA);
-printf("nIA %d ", nIA);
+    printf("nIA %d ", nIA);
 
 	fprintf(arq, "%f ", (double)tIA/(double)limite);
-printf("tutil %f ", (double)tIA/(double)limite);
+    printf("tutil %f ", (double)tIA/(double)limite);
 
 	fprintf(arq, "%d ", tIA);
-printf("tIA %d ", tIA);
+    printf("tIA %d ", tIA);
 
 	//------> DADO DE INTERESSE!!!
 	fprintf(arq, "%f ", capacidade);
-       printf("Cnominal %f ", capacidade);
+    printf("Cnominal %f ", capacidade);
 
 	fprintf(arq, "%f ", capacidadeEf);
-       printf("Cefetiva %f ", capacidadeEf);
+    printf("Cefetiva %f ", capacidadeEf);
 
 	fprintf(arq, "%f ", ZERO);
-       printf("media ZERO %f ", ZERO);
+    printf("media ZERO %f ", ZERO);
 
 	fprintf(arq, "%f ", BEAM);
-       printf("media BEAM %f ", BEAM);
+    printf("media BEAM %f ", BEAM);
 
 	fprintf(arq, "%f\n", BEAMZERO);
-       printf("media BEAMZERO %f\n", BEAMZERO);
+    printf("media BEAMZERO %f\n", BEAMZERO);
+
+    printf("BSbeam %f \n", beamBS);
+    printf("USRbeam %f \n", beamUSR);
 
 
 
@@ -1215,7 +1218,8 @@ int main(int argc, char *argv[ ])
 
 	if(contIA>=limite){avgcapacidade=0;}
 //printf("avgcapacidade %f\n ",avgcapacidade);
-	plot_results(algorithm, protocolo, decaimentoTaxaRx, velocity_USR, mediaErroGPS, avgcapacidade, avgcapacidadeEf, contadorIA, nIA, totalSNR, avgZERO, avgBEAM, avgBEAMZERO);
+	//plot_results(algorithm, protocolo, decaimentoTaxaRx, velocity_USR, mediaErroGPS, avgcapacidade, avgcapacidadeEf, contadorIA, nIA, totalSNR, avgZERO, avgBEAM, avgBEAMZERO);
+	plot_results(algorithm, protocolo, decaimentoTaxaRx, velocity_USR, mediaErroGPS, avgcapacidade, avgcapacidadeEf, contadorIA, nIA, totalSNR, avgZERO, avgBEAM, avgBEAMZERO, BeamBSdados, BeamUSRdados);
 	
 	if(trace) { fclose(tracefd);}
 
