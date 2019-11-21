@@ -57,6 +57,71 @@ elif sys.argv[1] == '2':
     plt.xlabel('Users Arriving in the Burst Set')
     plt.ylabel('Burst Set Downlink Capacity')
 
+if sys.argv[1] == '3':
+    system_capacity = []
+    for s in range(241,3300):
+        nSweeps = 64/B_BS
+        temp = B_BS*((s-240)/tau_ssb)*np.log(1 + ((tau_ssb/(s-240))*(p_tx*path_loss_w/N0)))
+        temp += B_BS*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+        system_capacity.append(temp*nSweeps)
+    plt.plot(system_capacity, label='exh', linestyle='--')
+
+
+    algorithm_slots = 5
+    for n in [0,4,8,12]:
+        system_capacity = []
+        for s in range(241,3300):
+            temp = (64 - (n*algorithm_slots))*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+            temp += (n*algorithm_slots)*((s-240)/tau_ssb)*np.log(1 + ((tau_ssb/(s-240))*(p_tx*path_loss_w/N0)))
+            temp += 64*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+            system_capacity.append(temp)
+        plt.plot(system_capacity, label='alg '+str(n)+' users')
+
+    plt.xlabel('Subcarriers')
+    plt.ylabel('Burst Set Downlink Capacity')
+    plt.legend()
+
+if sys.argv[1] == '4':
+    algorithm_slots = 5
+    for n in [0,4,8,12]:
+        system_capacity = []
+        for s in range(241,3300):
+            nSweeps = 64/B_BS
+            temp = B_BS*((s-240)/tau_ssb)*np.log(1 + ((tau_ssb/(s-240))*(p_tx*path_loss_w/N0)))
+            system_capacity.append(temp*nSweeps)
+
+
+            temp = (64 - (n*algorithm_slots))*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+            temp += (n*algorithm_slots)*((s-240)/tau_ssb)*np.log(1 + ((tau_ssb/(s-240))*(p_tx*path_loss_w/N0)))
+            system_capacity[-1] = 100 - system_capacity[-1]*100/temp
+        plt.plot(system_capacity, label='alg '+str(n)+' users')
+
+    plt.xlabel('Subcarriers')
+    plt.ylabel('Burst Set Downlink Capacity')
+    plt.legend()
+
+if sys.argv[1] == '5':
+    algorithm_slots = 5
+    for n in [0,4,8,12]:
+        system_capacity = []
+        for s in range(400,3300):
+            nSweeps = 64/B_BS
+            temp = B_BS*((s-240)/tau_ssb)*np.log(1 + ((tau_ssb/(s-240))*(p_tx*path_loss_w/N0)))
+            temp += B_BS*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+            system_capacity.append(temp*nSweeps)
+            #plt.plot(system_capacity, label='exh', linestyle='--')
+
+            temp = (64 - (n*algorithm_slots))*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+            temp += (n*algorithm_slots)*((s-240)/tau_ssb)*np.log(1 + ((tau_ssb/(s-240))*(p_tx*path_loss_w/N0)))
+            temp += 64*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+            system_capacity[-1] = 100 - 100*system_capacity[-1]/temp
+        #print(system_capacity)
+        plt.plot(system_capacity, label='alg '+str(n)+' users')
+
+    plt.xlabel('Subcarriers')
+    plt.ylabel('Burst Set Downlink Capacity')
+    plt.legend()
+
 plt.grid()
 if len(sys.argv) == 3: plt.savefig(sys.argv[2])
 plt.show()
