@@ -4,9 +4,24 @@ import numpy as np
 from subprocess import call, check_output
 import sys
 import simutime as st
+import argparse
 
-np.random.seed(int(sys.argv[4]))
+parser = argparse.ArgumentParser()
+parser.add_argument('-a','--alg', help='IA Algorithm to be performed', default='0')
+parser.add_argument('-c','--cond',help='Channel condition: 1 (LOS), 2 (NLOS) or 3 (random)',default='1')
+parser.add_argument('-m','--mean', help='mean of GPS error', default='10')
+parser.add_argument('-s','--seed', help='random number generators seed', default='1')
 
+args = parser.parse_args()
+ALG = args.alg
+COND = args.cond
+MEAN = args.mean
+SEED = args.seed
+
+if ALG == '4':
+    
+
+np.random.seed(int(SEED))
 
 '''
 Global definitions 
@@ -176,7 +191,7 @@ def ExhaustivePartialReciprocity(network, condition):
             remainingSSBlocks = int(network.numerology['ssblockMapping'][ssblock:].count(1)/4) #ssblocklength 4 symbols
             if remainingSSBlocks >= nSlotsIA:
                 IAtime = (network.ssbIndex+(ratio-network.ssbIndex%ratio-1))*BURST_PERIOD - network.env.now
-                IAtime += 
+                #IAtime += 
             else:
                 remainingSlots = (nSlotsIA - remainingSSBlocks)
                 needSSB = np.ceil(remainingSlots/network.numerology['ssblocks'])
@@ -231,6 +246,108 @@ def ExhaustivePartialReciprocity(network, condition):
 def ExhaustiveFullReciprocity(network, condition):
     nSlotsIA, nominalCapacity, beamNet, beamUser= network.initialAccess('0', condition)
 
+def IterativeSearch(network, condition, nAdjacents):
+    nSlotsIA, nominalCapacity, beamNet, beamUser= network.initialAccess('4', condition)
+    print('SS Blocks to Initial Access:',nSlotsIA)
+    print('Nominal Channel Capacity:', nominalCapacity)
+    '''
+    The total number of beamforming slots is equal to
+
+    (N_adj + 1)*NBEAMS_UE + 2*NBEAMS_UE
+
+    Where the first factor corresponds to IA Algorithm first phase and the second
+    phase, that is fixed, respectively corresponds to algorithms second phase.
+    '''
+    firstPhaseSlots = (nAdjacents+1)*network.inRangeUsers[-1].numberBeams 
+    secondPhaseSlots = 2*network.inRangeUsers[-1].numberBeams
+    nFirstPhase = int((nSlotsIA - secondPhaseSlots)/firstPhaseSlots)
+    
+    ratio = (RACH_PERIOD/BURST_PERIOD)
+    #UE joins the network during a burst set
+    if (network.env.now >= network.ssbIndex*BURST_PERIOD) and (network.env.now < (network.ssbIndex*BURST_PERIOD)+BURST_DURATION):
+        #The nearest burst set is a SSB
+        if network.ssbIndex % ratio != 0:
+            print('\033[94m'+"UE joined the network during a SSB"+'\033[0m')
+            print('\033[92m'+"Condition: ",int(network.env.now), (network.ssbIndex)*BURST_PERIOD,'\033[0m')
+            ssblock = int(round(((network.env.now - network.ssbIndex*BURST_PERIOD)/network.numerology['ofdmSymbolDuration']),0))
+            remainingSSBlocks = int(network.numerology['ssblockMapping'][ssblock:].count(1)/4) #ssblocklength 4 symbols
+            #if remainingSSBlocks >= nSlotsIA:
+            if remainingSSBlocks >= firstPhaseSlots:
+                #Success in realizing the first IA phase?
+                #        |--------AMOUNT OF SSBs UNTIL NEXT RACH---------|              |--RACH PERIOD--|
+                IAtime = (network.ssbIndex+(ratio-network.ssbIndex%ratio))*BURST_PERIOD + BURST_DURATION - network.env.now
+                if nFirstPhase > 1:
+                    #Failed in realizing the first IA phase? How many times?
+                    IAtime += (nFirstPhase - 2)*RACH_PERIOD
+                #Adding second phase duration
+                IAtime += RACH_PERIOD
+            # The current SSB is not sufficient to support all the slots
+            else:
+                #The number of beams not tried yet
+                remainingSlots = firstPhaseSlots - remainingSSBlocks
+                #Number of burst sets needed to finish the first phase
+                needSSB = np.ceil(remainingSlots/network.numerology['ssblocks'])
+                if (network.ssbIndex%ratio) > needSSB:
+                    #        |--------AMOUNT OF SSBs UNTIL NEXT RACH---------|              |--RACH PERIOD--|
+                    IAtime = (network.ssbIndex+(ratio-network.ssbIndex%ratio))*BURST_PERIOD + BURST_DURATION - network.env.now
+                else:
+                    #        |-----END OF CURRENT SSB-----| |--RACH PERIOD--||-NEXT SSB AND RACH|
+                    IAtime = network.ssbIndex*BURST_PERIOD + BURST_DURATION  +  RACH_PERIOD  - network.env.now
+                if nFirstPhase>1:
+                    #If the first phase has failed
+                    IAtime += (nFirstPhase - 2)*RACH_PERIOD
+                #Adding second phase duration
+                IAtime += RACH_PERIOD
+
+        #The nearest burst set is actually a RACH
+        else:
+            ssBurstsTaken = nSlotsIA/network.numerology['ssblocks']
+            print('\033[94m'+"UE joined the network during a RACH"+'\033[0m')
+            print('\033[92m'+"It will wait until the next SSB in",(network.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            #        |-----TIME UNTIL NEXT SSB-------||--FIRST PHASE--|
+            IAtime = (network.ssbIndex+1)*BURST_PERIOD + RACH_PERIOD - network.env.now
+            if nFirstPhase > 1:
+                #Failed in realizing the first IA phase? How many times?
+                IAtime += (nFirstPhase - 2)*RACH_PERIOD
+            #Adding second phase duration
+            IAtime += RACH_PERIOD
+
+    #UE joins the network just after/before the nearest BURST
+    else:
+        # Number of burst sets needed to finish the first phase
+        ssBurstsTaken = firstPhaseSlots/network.numerology['ssblocks']
+        if network.ssbIndex % ratio == 0:
+            print('\033[94m'+"UE joined the network after a RACH"+'\033[0m',network.ssbIndex)
+            print('\033[92m'+"It will wait until the next SSB in",(network.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            IAtime = (network.ssbIndex+1)*BURST_PERIOD - network.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+            #Check if it will need more than one burst set
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+
+        elif (network.ssbIndex+1) % ratio == 0:
+            print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', network.ssbIndex)
+            print('\033[91m'+"Nearest SSB is a RACH Opportunity! It will wait until",(network.ssbIndex+2)*BURST_PERIOD,'\033[0m')
+            IAtime = (network.ssbIndex+2)*BURST_PERIOD - network.env.now + (ratio-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+
+        else:
+            print('\033[91m'+"UE joined the network after a SSB"+'\033[0m', network.ssbIndex)
+            print('\033[92m'+"It will wait until the next SSB in",(network.ssbIndex+1)*BURST_PERIOD,'\033[0m')
+            IAtime = (network.ssbIndex+1)*BURST_PERIOD - network.env.now + (ratio-(network.ssbIndex%ratio)-1)*BURST_PERIOD + BURST_DURATION
+            if ssBurstsTaken > (ratio-(network.ssbIndex%ratio)-1):
+                for i in range(int(np.ceil(ssBurstsTaken/(ratio-1)))):
+                    IAtime += ratio*(BURST_PERIOD)
+
+        if nFirstPhase > 1:
+            #Failed in realizing the first IA phase? How many times?
+            IAtime += (nFirstPhase - 2)*RACH_PERIOD
+        #Adding second phase duration
+        IAtime += RACH_PERIOD
+
+    return IAtime
 
 class Network(object):
     def __init__(self, env, antennaArray):
@@ -324,7 +441,7 @@ class Network(object):
             Pt = '30'                      #Transmission Power
             dist = str(self.calcUserDist(user)) #Distanica Usuario x base
             npontos = '1' #' 50'
-            seed = sys.argv[4]
+            seed = SEED #sys.argv[4]
             NF = '5'                       #Noise Figure
             TN = '-174'                    #Thermal Noise
             BW = '400000000' #1000000000   #Bandwidth
@@ -337,7 +454,7 @@ class Network(object):
             protoParam = '500'             #In protocol type 1 - Period of IA
             limite = protoParam             #Simulation Time
             tipoErro = '1'                 #GPS Error Type: 1 - Normal Distribution | 2 - Uniform Distribution 
-            mediaErroGPS = sys.argv[3]      #
+            mediaErroGPS = MEAN #sys.argv[3]      #
             desvErroGPS = '10'             #
             alg = algorithm #sys.argv[1]
             log= '1'
@@ -373,13 +490,13 @@ class Network(object):
             beamUser = int(float(result[result.index('USRbeam')+1])*user.numberBeams/360)
             #print('SS Blocks to Initial Access:',nSlotsIA)
             #print('Nominal Channel Capacity:', nominalCapacity)
-        self.inRangeUsers=[]
+        #self.inRangeUsers=[]
         return [nSlotsIA, nominalCapacity, beamNet, beamUser]
             
 
     def associationRequest(self,user):
-        algorithm = sys.argv[1]
-        condition = sys.argv[2]
+        algorithm = ALG #sys.argv[1]
+        condition = COND #sys.argv[2]
         reciprocity = '0' #
 
         print('================================================================')
@@ -387,24 +504,31 @@ class Network(object):
 
         #The search is exhaustive, so the search is a little different
         if algorithm == '0':
-            if reciprocity == '0': IAtime = ExhaustiveNonReciprocity(self, condition)
-            elif reciprocity == '1': IAtime = ExhaustivePartialReciprocity(self, condition)
-            elif reciprocity == '2': IAtime = ExhaustiveFullReciprocity(self, condition)
+            if reciprocity == '0': 
+                IAtime = ExhaustiveNonReciprocity(self, condition)
+            elif reciprocity == '1': 
+                IAtime = ExhaustivePartialReciprocity(self, condition)
+            elif reciprocity == '2': 
+                IAtime = ExhaustiveFullReciprocity(self, condition)
             
             print('IA finished in:',IAtime,'at',self.env.now+IAtime)
 
         #The search is not exhaustive
         else:
-            if (int(self.env.now) + LTE_RTT) < (self.ssbIndex*BURST_PERIOD):
+            if (int(self.env.now) + LTE_RTT) < ((self.ssbIndex+1)*BURST_PERIOD):
                 '''
                 In this occasion, the message containig the location had the time
                 to travel through the LTE control channel before the next SS Burst
                 '''
-                print("Condition: ",int(self.env.now) + LTE_RTT, (self.ssbIndex)*BURST_PERIOD)
-                self.inRangeUsers.append(user)
-                self.initialAccess(algorithm, condition)
+                print('\033[92mCondition: %f %f\033[0m' % (int(self.env.now) + LTE_RTT, (self.ssbIndex+1)*BURST_PERIOD))
+                #self.inRangeUsers.append(user)
+                #self.initialAccess(algorithm, condition)
+                IterativeSearch(self,condition,3)
             else:
-                1
+                print('\033[91mCondition: %f %f \033[0m' % (int(self.env.now) + LTE_RTT, (self.ssbIndex+1)*BURST_PERIOD))
+                #self.inRangeUsers.append(user)
+                #self.initialAccess(algorithm, condition)
+                IterativeSearch(self,condition,3)
         print('================================================================')
 
 class User(object):
