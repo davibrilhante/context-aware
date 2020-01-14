@@ -7,6 +7,7 @@ import sys
 import simutime as st
 import definitions as defs
 from ExhaustiveSearch import ExhaustiveSearch
+from GeolocationAlgorithms import IterativeGeolocation
 
 
 
@@ -209,7 +210,7 @@ class Network(object):
             Tcanal = '1'                   #
             protoID = '1'                  #Protocol Type: 1 - Fixed Interval (static scenario) | 2 - Reactive
             protoParam = '500'             #In protocol type 1 - Period of IA
-            limite = protoParam             #Simulation Time
+            limite = protoParam            #Simulation Time
             tipoErro = '1'                 #GPS Error Type: 1 - Normal Distribution | 2 - Uniform Distribution
             mediaErroGPS = self.MEAN #sys.argv[3]      #
             desvErroGPS = '10'             #
@@ -222,8 +223,8 @@ class Network(object):
             fastIA = '0'
             limFastIA = '0'
             condCanal = condition #sys.argv[2]
-            if alg == '2' or alg == '3':
-                nAdjacents = self.ADJ
+            if algorithm == '1' or algorithm == '2':
+                nAdjacents = str(self.ADJ)
             else:
                 nAdjacents = '0'
             angle = str(self.calcUserAngle(user))
@@ -258,6 +259,7 @@ class Network(object):
     def associationRequest(self,user):
         algorithm = self.ALG #sys.argv[1]
         condition = self.COND #sys.argv[2]
+        nAdjacents = self.ADJ
 
         print('================================================================')
         self.inRangeUsers.append(user)
@@ -269,11 +271,16 @@ class Network(object):
 
         #The search is not exhaustive
         else:
+            if algorithm == '1':
+                1
+            elif algorithm == '2':
+                self.env.process(IterativeGeolocation(self, user, condition, nAdjacents))
+
+        '''
             if (int(self.env.now) + defs.LTE_RTT) < ((self.ssbIndex+1)*defs.BURST_PERIOD):
-                '''
-                In this occasion, the message containig the location had the time
-                to travel through the LTE control channel before the next SS Burst
-                '''
+                #In this occasion, the message containig the location had the time
+                #to travel through the LTE control channel before the next SS Burst
+                
                 print('\033[92mCondition: %f %f\033[0m' % (int(self.env.now) + defs.LTE_RTT, (self.ssbIndex+1)*defs.BURST_PERIOD))
                 IAtime = IterativeSearch(self,condition,2)
 
@@ -281,6 +288,7 @@ class Network(object):
                 print('\033[91mCondition: %f %f \033[0m' % (int(self.env.now) + defs.LTE_RTT, (self.ssbIndex+1)*defs.BURST_PERIOD))
                 IAtime = IterativeSearch(self,condition,2)
             print('IA finished in:',IAtime,'at',self.env.now+IAtime)
+        '''
         print('================================================================')
 
 
