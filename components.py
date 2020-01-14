@@ -3,9 +3,16 @@ from scipy import stats
 import numpy as np
 from subprocess import call, check_output
 import sys
+
 import simutime as st
 import definitions as defs
+from ExhaustiveSearch import ExhaustiveSearch
 
+
+
+
+
+SPACE=[[0 for j in range(2*defs.ENV_RADIUS+1)] for i in range(2*defs.ENV_RADIUS+1)]
 
 
 def numerology(subcarrierSpacing, ssburstLength=None):
@@ -90,7 +97,7 @@ class Network(object):
         self.frameIndex = 0
         self.ssbIndex = 0
         #Defines the position of the BS at the spatial occupation matrix
-        defs.SPACE[defs.ENV_RADIUS-1][defs.ENV_RADIUS-1]=1
+        SPACE[defs.ENV_RADIUS-1][defs.ENV_RADIUS-1]=1
         self.subcarrierSpacing = 120
         self.numerology = numerology(self.subcarrierSpacing)
         
@@ -106,7 +113,7 @@ class Network(object):
     def setSubcarrierSpacing(self, subcarrierSpacing, burstSetLength=None):
         self.numerology = numerology(subcarrierSpacing, burstSetLength)
 
-    def setInitialAccess(self, algorithm, condition, mean, seed=1, option=2):
+    def setInitialAccessAlgorithm(self, algorithm, condition, mean, seed=1, option=2):
         self.ALG = algorithm
         self.COND = condition
         self.MEAN = mean
@@ -204,7 +211,7 @@ class Network(object):
             protoParam = '500'             #In protocol type 1 - Period of IA
             limite = protoParam             #Simulation Time
             tipoErro = '1'                 #GPS Error Type: 1 - Normal Distribution | 2 - Uniform Distribution
-            mediaErroGPS = MEAN #sys.argv[3]      #
+            mediaErroGPS = self.MEAN #sys.argv[3]      #
             desvErroGPS = '10'             #
             alg = algorithm #sys.argv[1]
             log= '1'
@@ -251,21 +258,14 @@ class Network(object):
     def associationRequest(self,user):
         algorithm = self.ALG #sys.argv[1]
         condition = self.COND #sys.argv[2]
-        reciprocity = self.REC #
 
         print('================================================================')
         self.inRangeUsers.append(user)
 
         #The search is exhaustive, so the search is a little different
         if algorithm == '0':
-            if reciprocity == '0':
-                IAtime = ExhaustiveNonReciprocity(self, condition)
-            elif reciprocity == '1':
-                IAtime = ExhaustivePartialReciprocity(self, condition)
-            elif reciprocity == '2':
-                IAtime = ExhaustiveFullReciprocity(self, condition)
-
-            print('IA finished in:',IAtime,'at',self.env.now+IAtime)
+            reciprocity = self.REC #
+            ExhaustiveSearch(self, user, condition, reciprocity)
 
         #The search is not exhaustive
         else:
@@ -288,49 +288,71 @@ class User(object):
     def __init__(self, radius, antennaArray):
         self.x = radius
         self.y = radius
+        self.id = 0
+
+        self.sinr = float('inf')
+        self.iatime = []
+        self.powerOnTime = 0
+
         self.antennaArray = antennaArray
         self.antennaGain = antennaArray[0]*antennaArray[1]
         self.numberBeams = antennaArray[0]+antennaArray[1]
         while self.x**2 + self.y**2 > radius or SPACE[int(self.x+radius)][int(self.y+radius)]==1:
             self.x = np.random.uniform(-radius, radius)
             self.y = np.random.uniform(-radius, radius)
-        defs.SPACE[int(self.x+radius)][int(self.y+radius)]=1
+        SPACE[int(self.x+radius)][int(self.y+radius)]=1
+
+    def setIAtime(self, time):
+        self.iatime = time - self.powerOntime
+
+    def setPowerOnTime(self, time):
+        self.powerOntime = time
+
+    def setSINR(self, sinr):
+        self.sinr = sinr
 
 
 
 class Scenario(object):
     def __init__(self, env, net):
-        self.users = []
+        self.onlineUsers = []
+        self.offlineUsers = []
         self.env = env
         self.network = net
+        
 
     def userArrival(self, rate, radius, callback=None):
         """
         Add a new user to the array of users following a poisson distribtuion
         """
+        counter = 1
         while True:
             arrival = np.random.poisson(rate)
             yield self.env.timeout(arrival)
-            self.users.append(User(radius,[2,2]))
-            print("there are %d users at %d" %(len(self.users), self.env.now))
+            self.onlineUsers.append(User(radius,[2,2]))
+            self.onlineUsers[-1].id = counter
+            self.onlineUsers[-1].setPowerOnTime(self.env.now)
+            print("there are %d users at %d" %(len(self.onlineUsers), self.env.now))
             if callback:
-                callback(self.users[-1])
+                callback(self.onlineUsers[-1])
+            counter += 1
 
 
     def userSkip(self, averageUsers, rate):
         while True:
-            if len(self.users) >= averageUsers:
+            if len(self.onlineUsers) >= averageUsers:
                 #skip = stats.erlang.rvs(rate)
                 skip = np.random.poisson(rate)
                 yield self.env.timeout(skip)
-                droppingUser = np.random.choice(self.users)
-                defs.SPACE[int(droppingUser.x+defs.ENV_RADIUS)][int(droppingUser.y+defs.ENV_RADIUS)]=0
-                self.users.remove(droppingUser)
-                print("there are %d users at %d" %(len(self.users),self.env.now))
+                droppingUser = np.random.choice(self.onlineUsers)
+                SPACE[int(droppingUser.x+defs.ENV_RADIUS)][int(droppingUser.y+defs.ENV_RADIUS)]=0
+                self.onlineUsers.remove(droppingUser)
+                self.offlineUsers.append(droppingUser)
+                print("there are %d users at %d" %(len(self.onlineUsers),self.env.now))
             else:
                 skip = np.random.poisson(rate)
                 yield self.env.timeout(skip)
 
     def initializeUsers(self, arrivalRate, skipRate, nUsers):
-        env.process(self.userArrival(arrivalRate,defs.ENV_RADIUS, self.network.associationRequest))
-        env.process(self.userSkip(nUsers,skipRate))
+        self.env.process(self.userArrival(arrivalRate,defs.ENV_RADIUS, self.network.associationRequest))
+        self.env.process(self.userSkip(nUsers,skipRate))
