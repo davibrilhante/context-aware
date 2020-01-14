@@ -36,16 +36,15 @@ np.random.seed(int(seed))
 
 
         
-
-if __name__ == "__main__":
+def main():
     ### The average number of users simultaneously at the network
     nUsers = 10
     env = sp.Environment()
 
     #An input adjustment
-    if algorithm == 0:
+    if algorithm == '0':
         option = reciprocity
-    elif algorithm == 1 or algorithm == 2:
+    elif algorithm == '1' or algorithm == '2':
         option = adjacent
 
 
@@ -63,9 +62,11 @@ if __name__ == "__main__":
     Scheduling nerwork processes
     """
     fiveG = comp.Network(env,[8,8])
-    fiveG.initializeServices()
+    print('-Network Object', fiveG)
+
     fiveG.setSubcarrierSpacing(120) #120 KHz subcarrier Spacing
     fiveG.setInitialAccessAlgorithm(algorithm, condition, errorMean, seed, option)
+    fiveG.initializeServices()
 
 
     """
@@ -79,4 +80,7 @@ if __name__ == "__main__":
     """
     Launch Simulation
     """
-    env.run(until=SIM_DURATION)
+    env.run(until=defs.SIM_DURATION)
+
+if __name__ == "__main__":
+    main()
