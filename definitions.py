@@ -11,5 +11,5 @@ BURST_PERIOD = st.milliseconds(20).micro()
 RACH_PERIOD = st.milliseconds(80).micro()
 SIM_DURATION = st.seconds(10).micro()
 LTE_RTT = st.milliseconds(1).micro()
-ENV_RADIUS = 50 #meters
+ENV_RADIUS = 100 #meters
 RATIO = RACH_PERIOD/BURST_PERIOD # 1 RACH and (RATIO-1) Burst Set
