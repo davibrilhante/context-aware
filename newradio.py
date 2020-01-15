@@ -33,7 +33,32 @@ reciprocity = args.reciprocity
 
 np.random.seed(int(seed))
 
+def metricsCollector(scenario):
+    accIA = []
+    accSNR = []
+    allUsers = scenario.offlineUsers+scenario.onlineUsers
+    for user in allUsers:
+        ### Average Initial Access time
+        accIA.append(user.iatime)
+        ### Average SINR
+        if user.sinr != float('inf'):
+            accSNR.append(user.sinr)
 
+    print(np.mean(accIA))
+    print(np.mean(accSNR))
+
+    accAvg = []
+    accAgg = []
+    for frame in scenario.network.capacityPerFrame:
+        ### Average capacity
+        accAvg.append(np.mean(frame['capacityPerUser']))
+
+        ### Aggregated capacity
+        accAgg.append(sum(frame['capacityPerUser']))
+    print(np.mean(accAvg))
+    print(np.mean(accAgg))
+    print(accAvg)
+    print(accAgg)
 
         
 def main():
@@ -81,6 +106,9 @@ def main():
     Launch Simulation
     """
     env.run(until=defs.SIM_DURATION)
+    
+    print('\n\n\n@@@')
 
+    metricsCollector(scenario)
 if __name__ == "__main__":
     main()

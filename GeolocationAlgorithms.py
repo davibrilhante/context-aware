@@ -17,6 +17,7 @@ def EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, rachFl
         nSlotsIA, sinr, beamNet, beamUser = network.initialAccess('2', condition)
         nSlotsIA -= 1
         user.setSINR(sinr)
+        print('- SNR:', sinr)
         print('- IA slots needed:', nSlotsIA)
 
 
@@ -40,12 +41,12 @@ def EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, rachFl
                 ssblock = int(round(((network.env.now - burstStartTime)/network.numerology['ofdmSymbolDuration']),0))
                 remainingSSBlocks = int(network.numerology['ssblockMapping'][ssblock:].count(1)/4) #ssblocklength 4 symbols
 
-                if currentPhaseSlots <= remainingSSBlocks:
+                if currentPhaseSlots <= remainingSSBlocks and network.availableSlots >= currentPhaseSlots:
                     print('id: %d - SS Blocks were sufficient to complete a Phase of Initial Access.'%(user.id))
                     
                     nextRachTime = burstStartTime + (defs.RATIO - network.ssbIndex%defs.RATIO)*defs.BURST_PERIOD
                     nSlotsIA -= currentPhaseSlots
-                    
+                    network.availableSlots -= currentPhaseSlots
                     yield network.env.timeout(nextRachTime - network.env.now)
                     network.env.process(EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA, True))
 
@@ -54,7 +55,12 @@ def EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, rachFl
                     
                     #The resulting SNR was not enough to satistfy the algorithm that, so it will try again
                     nextBurstSet = burstStartTime + defs.BURST_PERIOD
-                    nSlotsIA -= remainingSSBlocks
+                    if network.availableSlots < currentPhaseSlots:
+                        nSlotsIA -= network.availableSlots
+                        network.availableSlots = 0
+                    else:
+                        nSlotsIA -= remainingSSBlocks
+                        network.availableSlots -= remainingSSBlocks
 
                     yield network.env.timeout(nextBurstSet - network.env.now)
                     network.env.process(EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA, False))
@@ -69,8 +75,8 @@ def EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, rachFl
 
         #After a Burst Set
         else:
-            print('id: %d - User Joined the network after a Burst Set. Will wait untill %d' % (user.id,nextBurstSet))
             nextBurstSet = burstStartTime + defs.BURST_PERIOD
+            print('id: %d - User Joined the network after a Burst Set. Will wait untill %d' % (user.id,nextBurstSet))
 
             yield network.env.timeout(nextBurstSet - network.env.now)
             network.env.process(EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA, False))
@@ -102,6 +108,8 @@ def EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, rachFl
             #count the number of ssblocks untill complete the RACH and each ssblock has 4 ofdmsymbols
             print('id: %d - Initial Access process completed at %d' %(user.id, network.env.now+(count*4*network.numerology['ofdmSymbolDuration'])))
             user.setIAtime(network.env.now + count*4*network.numerology['ofdmSymbolDuration'])
+            network.inRangeUsers.remove(user)
+            network.associatedUsers.append(user)
 
 
 
@@ -169,7 +177,7 @@ def IterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, feedb
                 ssblock = int(round(((network.env.now - burstStartTime)/network.numerology['ofdmSymbolDuration']),0))
                 remainingSSBlocks = int(network.numerology['ssblockMapping'][ssblock:].count(1)/4) #ssblocklength 4 symbols
 
-                if firstPhaseSlots <= remainingSSBlocks:
+                if firstPhaseSlots <= remainingSSBlocks and network.availableSlots >= firstPhaseSlots:
                     if nFirstPhase == 0 or (nFirstPhase == 1 and firstPhaseTotal):
                         
                         #It will sweep for firstPhaseSlots or less slots and the give feedback of the first phase
@@ -185,7 +193,7 @@ def IterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, feedb
                         if not secondPhaseFlag:
                             network.env.process(IterativeGeolocation(network, user, condition, nAdjacents, secondPhaseSlots, 1))
                         else:
-                            network.env.process(IterativeGeolocation(network, user, condition, nAdjacents, secondPhaseSlots, 2))
+                            network.env.process(IterativeGeolocation(network, user, condition, nAdjacents, 0, 2))#secondPhaseSlots, 2))
 
                     else:
                         print('id: %d - It will need another beam sweeping.'%(user.id))
@@ -199,8 +207,12 @@ def IterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, feedb
                 else:
                     #The SSB were not enough to complete a first phase of sweeping
                     print('id: %d - SS Blocks were not sufficient to complete Initial Access.'%(user.id))
-                    
-                    nSlotsIA = firstPhaseSlots - remainingSSBlocks
+                    if network.availableSlots < firstPhaseSlots:
+                        nSlotsIA -= network.availableSlots
+                        network.availableSlots = 0
+                    else:
+                        nSlotsIA -= firstPhaseSlots - remainingSSBlocks
+
                     nextBurstSet = burstStartTime + defs.BURST_PERIOD
                     
                     #it will wait untill the next Burst Set and sweeping continues going on
@@ -249,3 +261,5 @@ def IterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, feedb
             #count the number of ssblocks untill complete the RACH and each ssblock has 4 ofdmsymbols
             print('id: %d - Initial Access process completed at %d' %(user.id, network.env.now+(count*4*network.numerology['ofdmSymbolDuration'])))
             user.setIAtime(network.env.now + count*4*network.numerology['ofdmSymbolDuration'])
+            network.inRangeUsers.remove(user)
+            network.associatedUsers.append(user)

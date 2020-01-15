@@ -80,6 +80,7 @@ def numerology(subcarrierSpacing, ssburstLength=None):
         numerol['ssBurstSlots'] = defs.BURST_PERIOD/numerol['slotDuration'],
         numerol['ssblocks']= 64
         numerol['ssblockMapping'] = ((([0 for i in range(8)]+[1 for i in range(16)])*2+[0 for i in range(8)])*4+[0 for i in range(14)]*4)*2+[0 for i in range(14)]*32
+        numerol['maxRB'] = 138
         return numerol
     else:
         print("Not a valid subcarrier spacing passed!")
@@ -111,6 +112,50 @@ class Network(object):
         self.ADJ = 2
         self.REC = 2
 
+        
+        self.capacityPerFrame = []
+        self.availableSlots = self.numerology['ssblocks']
+        self.downlinkRatio = 0.5 #time ratio between downlink and uplink
+
+    def calcNetworkCapacity(self):
+        dataPeriod = defs.BURST_PERIOD - defs.BURST_DURATION
+        capacity = {
+                'activeUsers' : len(self.associatedUsers),
+                'timePerUser' : 0,
+                'bandwidthPerUser' : self.numerology['maxRB']*self.subcarrierSpacing*1e3,
+                'capacityPerUser' : []
+                }
+
+        if self.associatedUsers != []:
+            if self.ALG == '0':
+                accessTimePerUser = dataPeriod*self.downlinkRatio/capacity['activeUsers']
+                for i in self.associatedUsers:
+                    capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr)*accessTimePerUser)
+                capacity['timePerUser'] = accessTimePerUser
+
+
+            else:
+                usedBurstSlots = self.numerology['ssblocks'] - self.availableSlots
+                count = 0
+                ssb = 0
+                for x in self.numerology['ssblockMapping']:
+                    count+=1
+                    if x==1:
+                        ssb += 1
+                    if ssb == usedBurstSlots:
+                        break
+
+                controlPeriod = usedBurstSlots - count*4*self.numerology['ofdmSymbolDuration']
+                accessTimePerUser = (dataPeriod*self.downlinkRatio + controlPeriod)/capacity['activeUsers']
+                accessTimePerUser /= 1e6 #microseconds to seconds conversion
+                for i in self.associatedUsers:
+                    capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr)*accessTimePerUser)
+                capacity['timePerUser'] = accessTimePerUser
+
+            self.capacityPerFrame.append(capacity)
+
+
+
     def setSubcarrierSpacing(self, subcarrierSpacing, burstSetLength=None):
         self.numerology = numerology(subcarrierSpacing, burstSetLength)
 
@@ -139,10 +184,12 @@ class Network(object):
         rachPeriod = 40 milliseconds
         '''
         while True:
+            self.availableSlots = self.numerology['ssblocks']
             if (self.frameIndex % (rachPeriod/defs.FRAME_DURATION) != 0) and (self.frameIndex != 1):
                 print('A new burst set is starting at %d and it is the %d ss burst in %d frame' % (self.env.now, self.ssbIndex, self.frameIndex))
                 yield self.env.timeout(burstDuration)
                 print('The burst set has finished at %d' % self.env.now)
+                self.calcNetworkCapacity()
                 yield self.env.timeout(burstPeriod - burstDuration)
             else:
                 yield self.env.timeout(burstPeriod)
@@ -172,6 +219,11 @@ class Network(object):
                 print('A new rach opportunity is starting at %d and it is the %d ss burst in %d frame' % (self.env.now, self.ssbIndex, self.frameIndex))
                 yield self.env.timeout(rachDuration)
                 print('The rach opportunity  has finished at %d' % self.env.now)
+                #GAMBIARRA
+                temp = self.ALG
+                self.ALG = '0'
+                self.calcNetworkCapacity()
+                self.ALG = temp
                 yield self.env.timeout(rachPeriod - rachDuration)
 
     def initializeServices(self):
@@ -247,13 +299,15 @@ class Network(object):
             #print(result)
             if algorithm == '0' : nSlotsIA = int(result[result.index('tIA')+1]) - 1
             else : nSlotsIA = int(result[result.index('tIA')+1])
-            nominalCapacity = float(result[result.index('Cnominal')+1])
+            nominalCapacity = np.float64(result[result.index('Cnominal')+1])
+            nominalSNR = np.power(2,nominalCapacity,dtype=np.float64)-1.0
             beamNet = int(float(result[result.index('BSbeam')+1])*self.numberBeams/360)
             beamUser = int(float(result[result.index('USRbeam')+1])*user.numberBeams/360)
             #print('SS Blocks to Initial Access:',nSlotsIA)
             #print('Nominal Channel Capacity:', nominalCapacity)
         #self.inRangeUsers=[]
         return [nSlotsIA, nominalCapacity, beamNet, beamUser]
+        #return [nSlotsIA, nominalSNR, beamNet, beamUser]
 
 
     def associationRequest(self,user):
@@ -293,6 +347,8 @@ class Network(object):
         print('================================================================')
 
 
+
+
 class User(object):
     def __init__(self, radius, antennaArray):
         self.x = radius
@@ -300,7 +356,7 @@ class User(object):
         self.id = 0
 
         self.sinr = float('inf')
-        self.iatime = []
+        self.iatime = 0# []
         self.powerOnTime = 0
 
         self.antennaArray = antennaArray
@@ -353,11 +409,12 @@ class Scenario(object):
                 #skip = stats.erlang.rvs(rate)
                 skip = np.random.poisson(rate)
                 yield self.env.timeout(skip)
-                droppingUser = np.random.choice(self.onlineUsers)
+                droppingUser = np.random.choice(self.network.associatedUsers)
                 SPACE[int(droppingUser.x+defs.ENV_RADIUS)][int(droppingUser.y+defs.ENV_RADIUS)]=0
                 self.onlineUsers.remove(droppingUser)
                 self.offlineUsers.append(droppingUser)
                 print("there are %d users at %d" %(len(self.onlineUsers),self.env.now))
+                self.network.associatedUsers.remove(droppingUser)
             else:
                 skip = np.random.poisson(rate)
                 yield self.env.timeout(skip)

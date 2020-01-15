@@ -248,8 +248,8 @@ def ExhaustiveFullReciprocity(network, user, condition, IAslots, rachFlag):
             #count the number of ssblocks untill complete the RACH and each ssblock has 4 ofdmsymbols
             print('id: %d - RACH process completed at %d' %(user.id, network.env.now+(count*4*network.numerology['ofdmSymbolDuration'])))
             user.setIAtime(network.env.now + count*4*network.numerology['ofdmSymbolDuration'])
-
-
+            network.inRangeUsers.remove(user)
+            network.associatedUsers.append(user)
 
 
 
