@@ -7,7 +7,7 @@ import sys
 import simutime as st
 import definitions as defs
 from ExhaustiveSearch import ExhaustiveSearch
-from GeolocationAlgorithms import IterativeGeolocation
+from GeolocationAlgorithms import IterativeGeolocation, EnhancedGeolocation
 
 
 
@@ -114,14 +114,14 @@ class Network(object):
     def setSubcarrierSpacing(self, subcarrierSpacing, burstSetLength=None):
         self.numerology = numerology(subcarrierSpacing, burstSetLength)
 
-    def setInitialAccessAlgorithm(self, algorithm, condition, mean, seed=1, option=2):
+    def setInitialAccessAlgorithm(self, algorithm, condition, mean, seed=1, option='2'):
         self.ALG = algorithm
         self.COND = condition
         self.MEAN = mean
         self.SEED = seed
         if algorithm == '0':
             self.REC = option
-        elif algorithm =='1' or algorithm=='2':
+        elif algorithm =='2' or algorithm=='3':
             self.ADJ = option
 
 
@@ -223,7 +223,7 @@ class Network(object):
             fastIA = '0'
             limFastIA = '0'
             condCanal = condition #sys.argv[2]
-            if algorithm == '1' or algorithm == '2':
+            if algorithm == '2' or algorithm == '3':
                 nAdjacents = str(self.ADJ)
             else:
                 nAdjacents = '0'
@@ -271,9 +271,10 @@ class Network(object):
 
         #The search is not exhaustive
         else:
-            if algorithm == '1':
-                1
-            elif algorithm == '2':
+            if algorithm == '2':
+                self.env.process(EnhancedGeolocation(self, user, condition, nAdjacents))
+               
+            elif algorithm == '3':
                 self.env.process(IterativeGeolocation(self, user, condition, nAdjacents))
 
         '''
