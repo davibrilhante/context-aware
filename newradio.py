@@ -44,7 +44,7 @@ def main():
     #An input adjustment
     if algorithm == '0':
         option = reciprocity
-    elif algorithm == '1' or algorithm == '2':
+    elif algorithm == '2' or algorithm == '3':
         option = adjacent
 
 
