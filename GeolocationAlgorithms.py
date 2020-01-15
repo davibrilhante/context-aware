@@ -8,17 +8,100 @@ import simutime as st
 import definitions as defs
 
 
-def EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA, rachFlag=False):
+def EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, rachFlag=False):
     yield network.env.timeout(defs.LTE_RTT)
 
 
-    if nSlotsIA == 0:
-        nSlotsIA, sinr, beamNet, beamUser = network.initialAccess('1', condition)
-
+    if nSlotsIA == 0 and not rachFlag:
+        print("- Starting Initial Access with Enhanced Geolocation Algorithm.")
+        nSlotsIA, sinr, beamNet, beamUser = network.initialAccess('2', condition)
+        nSlotsIA -= 1
         user.setSINR(sinr)
+        print('- IA slots needed:', nSlotsIA)
 
-    print("- Starting Initial Access with Enhanced Geolocation Algorithm.")
-    print('- IA slots needed:', nSlotsIA)
+
+    slotsPerPhase = user.numberBeams * (2*nAdjacents + 1)
+
+    if nSlotsIA % slotsPerPhase == 0:
+        currentPhaseSlots = slotsPerPhase
+    else:
+        currentPhaseSlots = nSlotsIA % slotsPerPhase 
+    
+    burstStartTime = network.ssbIndex*defs.BURST_PERIOD
+    burstEndTime = burstStartTime+defs.BURST_DURATION
+
+    if not rachFlag:
+        #During a Burst Set
+        if (network.env.now >= burstStartTime) and (network.env.now < burstEndTime):
+            print('id: %d - User Joined the network during a Burst Set.'%(user.id))
+            #It's a SSB
+            if network.ssbIndex % defs.RATIO != 0:
+                print('id: %d - Current Burst Set is a SS Burst.'%(user.id))
+                ssblock = int(round(((network.env.now - burstStartTime)/network.numerology['ofdmSymbolDuration']),0))
+                remainingSSBlocks = int(network.numerology['ssblockMapping'][ssblock:].count(1)/4) #ssblocklength 4 symbols
+
+                if currentPhaseSlots <= remainingSSBlocks:
+                    print('id: %d - SS Blocks were sufficient to complete a Phase of Initial Access.'%(user.id))
+                    
+                    nextRachTime = burstStartTime + (defs.RATIO - network.ssbIndex%defs.RATIO)*defs.BURST_PERIOD
+                    nSlotsIA -= currentPhaseSlots
+                    
+                    yield network.env.timeout(nextRachTime - network.env.now)
+                    network.env.process(EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA, True))
+
+                else:
+                    print('id: %d - SS Blocks were not sufficient to complete Initial Access.'%(user.id))
+                    
+                    #The resulting SNR was not enough to satistfy the algorithm that, so it will try again
+                    nextBurstSet = burstStartTime + defs.BURST_PERIOD
+                    nSlotsIA -= remainingSSBlocks
+
+                    yield network.env.timeout(nextBurstSet - network.env.now)
+                    network.env.process(EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA, False))
+
+            # It's a RACH Opportunity
+            else:
+                print('id: %d - Current Burst Set is a RACH Opportunity.'%(user.id))
+                nextBurstSet = burstStartTime + defs.BURST_PERIOD
+
+                yield network.env.timeout(nextBurstSet - network.env.now)
+                network.env.process(EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA, False))
+
+        #After a Burst Set
+        else:
+            print('id: %d - User Joined the network after a Burst Set. Will wait untill %d' % (user.id,nextBurstSet))
+            nextBurstSet = burstStartTime + defs.BURST_PERIOD
+
+            yield network.env.timeout(nextBurstSet - network.env.now)
+            network.env.process(EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA, False))
+
+
+    else:
+        print('id: %d - Current Burst Set is a RACH Opportunity and will give feedback.'%(user.id))
+
+        #Will repeat the process after feedback
+        if nSlotsIA > 0:
+            nextBurstSet = burstStartTime + defs.BURST_PERIOD
+            
+            print('id: %d - Started to give feedback another phase will start at %d' % (user.id,nextBurstSet))
+            yield network.env.timeout(nextBurstSet - network.env.now)
+            network.env.process(EnhancedGeolocation(network, user, condition, nAdjacents, nSlotsIA, False))
+
+        #Beam Sweeping succeed, just need the last feedback
+        else:
+            feedbackSlot = network.inRangeUsers.index(user)
+            count = 0
+            ssb = 0
+            for x in network.numerology['ssblockMapping']:
+                count+=1
+                if x==1:
+                    ssb += 1
+                if ssb == feedbackSlot:
+                    break
+
+            #count the number of ssblocks untill complete the RACH and each ssblock has 4 ofdmsymbols
+            print('id: %d - Initial Access process completed at %d' %(user.id, network.env.now+(count*4*network.numerology['ofdmSymbolDuration'])))
+            user.setIAtime(network.env.now + count*4*network.numerology['ofdmSymbolDuration'])
 
 
 
@@ -28,8 +111,8 @@ def IterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, feedb
     yield network.env.timeout(defs.LTE_RTT)
 
     if nSlotsIA == 0:
-        print("- Starting Initial Access with Enhanced Geolocation Algorithm.")
-        nSlotsIA, sinr, beamNet, beamUser = network.initialAccess('2', condition)
+        print("- Starting Initial Access with Iterative Geolocation Algorithm.")
+        nSlotsIA, sinr, beamNet, beamUser = network.initialAccess('3', condition)
         nSlotsIA -= 1
 
         user.setSINR(sinr)
