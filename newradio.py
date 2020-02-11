@@ -7,8 +7,6 @@ import simutime as st
 import argparse
 
 import definitions as defs
-import components as comp
-from ExhaustiveSearch import ExhaustiveSearch
 
 
 
@@ -22,6 +20,9 @@ parser.add_argument('-m','--mean', help='mean of GPS error', default='10')
 parser.add_argument('-s','--seed', help='random number generators seed', default='1')
 parser.add_argument('-d','--adjacent', help='adjacent beams to specific algorithms', default='2', required=False, type=int)
 parser.add_argument('-r','--reciprocity', help='Channel reciprocity assumption', default='2', required=False, type=int)
+parser.add_argument('-l','--radius', help='Scenarios radius', default=defs.ENV_RADIUS, required=False, type=int)
+parser.add_argument('-u','--users', help='Average users simultaneously', default=10, required=False, type=int)
+parser.add_argument('-t','--rate', help='Users Arrival Rate', default=0.1, required=False, type=float)
 
 args = parser.parse_args()
 algorithm = args.alg
@@ -30,6 +31,12 @@ errorMean = args.mean
 seed = args.seed
 adjacent = args.adjacent
 reciprocity = args.reciprocity
+defs.ENV_RADIUS = args.radius
+users = args.users
+
+import components as comp
+#from ExhaustiveSearch import ExhaustiveSearch
+
 
 np.random.seed(int(seed))
 
@@ -63,8 +70,9 @@ def metricsCollector(scenario):
         
 def main():
     ### The average number of users simultaneously at the network
-    nUsers = 10
+    nUsers = users
     env = sp.Environment()
+
 
     #An input adjustment
     if algorithm == '0':
@@ -78,7 +86,7 @@ def main():
     The user mean user arrival/inter-arrival rate, i.e. 1 user per arrival 
     rate, in seconds
     """
-    arrivalRate = st.seconds(0.1).micro() 
+    arrivalRate = st.seconds(args.rate).micro() 
     skipRate = arrivalRate
     activeUsers = [] 
 
@@ -110,5 +118,9 @@ def main():
     print('\n\n\n@@@')
 
     metricsCollector(scenario)
+
+
+
+
 if __name__ == "__main__":
     main()
