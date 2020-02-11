@@ -11,9 +11,8 @@ from GeolocationAlgorithms import IterativeGeolocation, EnhancedGeolocation
 
 
 
-
-
 SPACE=[[0 for j in range(2*defs.ENV_RADIUS+1)] for i in range(2*defs.ENV_RADIUS+1)]
+
 
 
 def numerology(subcarrierSpacing, ssburstLength=None):
@@ -117,6 +116,9 @@ class Network(object):
         self.availableSlots = self.numerology['ssblocks']
         self.downlinkRatio = 0.5 #time ratio between downlink and uplink
 
+    def setDownlinkRatio(self, ratio):
+        self.downlinkRatio = ratio
+
     def calcNetworkCapacity(self):
         dataPeriod = defs.BURST_PERIOD - defs.BURST_DURATION
         capacity = {
@@ -130,6 +132,8 @@ class Network(object):
             if self.ALG == '0':
                 accessTimePerUser = dataPeriod*self.downlinkRatio/capacity['activeUsers']
                 for i in self.associatedUsers:
+                    if i.sinr ==float('inf'):
+                        continue
                     capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr)*accessTimePerUser)
                 capacity['timePerUser'] = accessTimePerUser
 
@@ -149,6 +153,8 @@ class Network(object):
                 accessTimePerUser = (dataPeriod*self.downlinkRatio + controlPeriod)/capacity['activeUsers']
                 accessTimePerUser /= 1e6 #microseconds to seconds conversion
                 for i in self.associatedUsers:
+                    if i.sinr ==float('inf'):
+                        continue
                     capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr)*accessTimePerUser)
                 capacity['timePerUser'] = accessTimePerUser
 
@@ -254,7 +260,7 @@ class Network(object):
             seed = self.SEED #sys.argv[4]
             NF = '5'                       #Noise Figure
             TN = '-174'                    #Thermal Noise
-            BW = '400000000' #1000000000   #Bandwidth
+            BW = str(self.numerology['maxRB']*self.subcarrierSpacing*1e3) ### '400000000' #1000000000   #Bandwidth
             div = '4'                      #antenna array divisor of wavelength
             move = '75000'                 #Time to keep a path
             minSNR = '-5'                  #Minimal signal to detection
@@ -300,14 +306,16 @@ class Network(object):
             if algorithm == '0' : nSlotsIA = int(result[result.index('tIA')+1]) - 1
             else : nSlotsIA = int(result[result.index('tIA')+1])
             nominalCapacity = np.float64(result[result.index('Cnominal')+1])
-            nominalSNR = np.power(2,nominalCapacity,dtype=np.float64)-1.0
+            effectiveCapacity = np.float64(result[result.index('Cefetiva')+1])
+            nominalSNR = 10*np.log10(np.float64(result[result.index('totalSNR')+1])) #np.power(2,nominalCapacity,dtype=np.float64)-1.0)
             beamNet = int(float(result[result.index('BSbeam')+1])*self.numberBeams/360)
             beamUser = int(float(result[result.index('USRbeam')+1])*user.numberBeams/360)
             #print('SS Blocks to Initial Access:',nSlotsIA)
             #print('Nominal Channel Capacity:', nominalCapacity)
         #self.inRangeUsers=[]
-        return [nSlotsIA, nominalCapacity, beamNet, beamUser]
-        #return [nSlotsIA, nominalSNR, beamNet, beamUser]
+        #return [nSlotsIA, nominalCapacity, beamNet, beamUser]
+        #return [nSlotsIA, effectiveCapacity, beamNet, beamUser]
+        return [nSlotsIA, nominalSNR, beamNet, beamUser]
 
 
     def associationRequest(self,user):
@@ -362,9 +370,14 @@ class User(object):
         self.antennaArray = antennaArray
         self.antennaGain = antennaArray[0]*antennaArray[1]
         self.numberBeams = antennaArray[0]+antennaArray[1]
+        '''
         while self.x**2 + self.y**2 > radius or SPACE[int(self.x+radius)][int(self.y+radius)]==1:
             self.x = np.random.uniform(-radius, radius)
             self.y = np.random.uniform(-radius, radius)
+        '''
+        angle = np.random.uniform(0,2*np.pi)
+        self.x = radius*np.cos(angle)
+        self.y = radius*np.sin(angle)
         SPACE[int(self.x+radius)][int(self.y+radius)]=1
 
     def setIAtime(self, time):
