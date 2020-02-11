@@ -102,7 +102,7 @@ if plotType == 3:
         plt.plot(system_capacity, label='alg '+str(n)+' users')
 
     plt.xlabel('Subcarriers')
-    plt.ylabel('Burst Set Downlink Capacity')
+    plt.ylabel('Full Downlink Capacity')
     plt.legend()
 
 if plotType == 4:
@@ -143,6 +143,29 @@ if plotType == 5:
             system_capacity[-1] = 100 - 100*system_capacity[-1]/temp
         #print(system_capacity)
         plt.plot(system_capacity, label='alg '+str(n)+' users')
+
+    plt.xlabel('Subcarriers')
+    plt.ylabel('Full Downlink Capacity')
+    plt.legend()
+
+if plotType == 6:
+    slotsArray = [(args.algorithmSlots - i*2) for i in range(int(args.algorithmSlots/3))]
+    n = 1
+    for algorithm_slots in slotsArray:
+        system_capacity = []
+        for s in range(400,3300):
+            nSweeps = 64/B_BS
+            temp = B_BS*((s-240)/tau_ssb)*np.log(1 + ((tau_ssb/(s-240))*(p_tx*path_loss_w/N0)))
+            temp += B_BS*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+            system_capacity.append(temp*nSweeps)
+            #plt.plot(system_capacity, label='exh', linestyle='--')
+
+            temp = (64 - (n*algorithm_slots))*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+            temp += (n*algorithm_slots)*((s-240)/tau_ssb)*np.log(1 + ((tau_ssb/(s-240))*(p_tx*path_loss_w/N0)))
+            temp += 64*(s/tau_ssb)*np.log(1 + ((tau_ssb/s)*(p_tx*path_loss_w/N0)))
+            system_capacity[-1] = 100 - 100*system_capacity[-1]/temp
+        #print(system_capacity)
+        plt.plot(system_capacity, label='alg '+str(algorithm_slots)+' slots')
 
     plt.xlabel('Subcarriers')
     plt.ylabel('Burst Set Downlink Capacity')
