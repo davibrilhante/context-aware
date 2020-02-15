@@ -14,7 +14,7 @@ import definitions as defs
 Input Arguments parsing
 """
 parser = argparse.ArgumentParser()
-parser.add_argument('-a','--alg', help='IA Algorithm to be performed', default='0')
+parser.add_argument('-a','--alg', help='IA Algorithm to be performed: 0 (Exhaustive) 2 (Enhanced) 3 (Iterative)', default='0')
 parser.add_argument('-c','--cond',help='Channel condition: 1 (LOS), 2 (NLOS) or 3 (random)',default='1')
 parser.add_argument('-m','--mean', help='mean of GPS error', default='10')
 parser.add_argument('-s','--seed', help='random number generators seed', default='1')
@@ -51,8 +51,8 @@ def metricsCollector(scenario):
         if user.sinr != float('inf'):
             accSNR.append(user.sinr)
 
-    print(np.mean(accIA))
-    print(np.mean(accSNR))
+    print("Average Initial Access Time: ",np.mean(accIA))
+    print("Average SINR: ", np.mean(accSNR))
 
     accAvg = []
     accAgg = []
@@ -62,10 +62,17 @@ def metricsCollector(scenario):
 
         ### Aggregated capacity
         accAgg.append(sum(frame['capacityPerUser']))
-    print(np.mean(accAvg))
-    print(np.mean(accAgg))
-    print(accAvg)
-    print(accAgg)
+    print("Average per user Capacity: ",np.mean(accAvg))
+    print("Aggregated Network Capacity: ", np.mean(accAgg))
+    #print(accAvg)
+    #print(accAgg)
+    import matplotlib.pyplot as plt
+    plt.plot(accAvg, label='Average')
+    plt.plot(accAgg, label='aggregated')
+    plt.ylim(0,7e10)
+    plt.legend()
+    plt.show()
+
 
         
 def main():

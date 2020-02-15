@@ -1255,7 +1255,7 @@ int main(int argc, char *argv[ ])
 					}
 					USRbeam=BeamUSRdados;
 					BSbeam=BeamBSdados;
-					//totalSNR = totalSNR + SNR;
+					totalSNR = totalSNR + SNR;
 					totalCap=totalCap+(log2(SNR +1));
 					//printf("SNR %f\n ",SNR);
 					contDADOS++;
@@ -1330,16 +1330,19 @@ int main(int argc, char *argv[ ])
 	//printf("totalCap %f\n ",totalCap);
 
 	float avgcapacidade;
+	float avgSNR;
 	float avgcapacidadeEf;
 	float avgZERO;
 	float avgBEAM;
 	if (contDADOS > 0) {
 		avgcapacidade=(totalCap/contDADOS);
+		avgSNR=(totalSNR/contDADOS);
 		avgcapacidadeEf=(totalCap/Tsimulacao);
 		avgZERO=(float)ZERO/(float)contDADOS;
 		avgBEAM=(float)certo/(float)contDADOS;
 	} else {
 		avgcapacidade=0.0;
+		avgSNR=0.0;
 		avgcapacidadeEf=0.0;
 		avgZERO=0.0;
 		avgBEAM=0.0;
@@ -1354,7 +1357,7 @@ int main(int argc, char *argv[ ])
 	//printf("avgcapacidade %f\n ",avgcapacidade);
 	//plot_results(algorithm, protocolo, decaimentoTaxaRx, velocity_USR, mediaErroGPS, avgcapacidade, avgcapacidadeEf, contadorIA, nIA, totalSNR, avgZERO, avgBEAM, avgBEAMZERO);
 	//plot_results(algorithm, protocolo, decaimentoTaxaRx, velocity_USR, mediaErroGPS, avgcapacidade, avgcapacidadeEf, contadorIA, nIA, totalSNR, avgZERO, avgBEAM, avgBEAMZERO, BeamBSdados, BeamUSRdados);
-	plot_results(algorithm, protocolo, decaimentoTaxaRx, velocity_USR, mediaErroGPS, avgcapacidade, avgcapacidadeEf, contadorIA, nIA, SNR, avgZERO, avgBEAM, avgBEAMZERO, BeamBSdados, BeamUSRdados);
+	plot_results(algorithm, protocolo, decaimentoTaxaRx, velocity_USR, mediaErroGPS, avgcapacidade, avgcapacidadeEf, contadorIA, nIA, avgSNR, avgZERO, avgBEAM, avgBEAMZERO, BeamBSdados, BeamUSRdados);
 	
 	if(trace) { fclose(tracefd);}
 

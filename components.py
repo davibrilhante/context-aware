@@ -124,7 +124,7 @@ class Network(object):
         capacity = {
                 'activeUsers' : len(self.associatedUsers),
                 'timePerUser' : 0,
-                'bandwidthPerUser' : self.numerology['maxRB']*self.subcarrierSpacing*1e3,
+                'bandwidthPerUser' : self.numerology['maxRB']*12*self.subcarrierSpacing*1e3, #each resource block has 12 subcarriers
                 'capacityPerUser' : []
                 }
 
@@ -134,7 +134,7 @@ class Network(object):
                 for i in self.associatedUsers:
                     if i.sinr ==float('inf'):
                         continue
-                    capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr)*accessTimePerUser)
+                    capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr))#*accessTimePerUser)
                 capacity['timePerUser'] = accessTimePerUser
 
 
@@ -155,7 +155,7 @@ class Network(object):
                 for i in self.associatedUsers:
                     if i.sinr ==float('inf'):
                         continue
-                    capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr)*accessTimePerUser)
+                    capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr))#*accessTimePerUser)
                 capacity['timePerUser'] = accessTimePerUser
 
             self.capacityPerFrame.append(capacity)
@@ -195,7 +195,7 @@ class Network(object):
                 print('A new burst set is starting at %d and it is the %d ss burst in %d frame' % (self.env.now, self.ssbIndex, self.frameIndex))
                 yield self.env.timeout(burstDuration)
                 print('The burst set has finished at %d' % self.env.now)
-                self.calcNetworkCapacity()
+                #self.calcNetworkCapacity()
                 yield self.env.timeout(burstPeriod - burstDuration)
             else:
                 yield self.env.timeout(burstPeriod)
@@ -206,6 +206,7 @@ class Network(object):
             print('Frame:',self.frameIndex,'in',self.env.now)
             self.frameIndex+=1
             yield self.env.timeout(defs.FRAME_DURATION)
+            self.calcNetworkCapacity()
             if self.frameIndex % (defs.BURST_PERIOD/defs.FRAME_DURATION) == 0:
                 self.ssbIndex+=1
 
@@ -257,7 +258,7 @@ class Network(object):
             Pt = '30'                      #Transmission Power
             dist = str(self.calcUserDist(user)) #Distanica Usuario x base
             npontos = '1' #' 50'
-            seed = self.SEED #sys.argv[4]
+            seed = str(int(self.env.now)) #self.SEED #sys.argv[4]
             NF = '5'                       #Noise Figure
             TN = '-174'                    #Thermal Noise
             BW = str(self.numerology['maxRB']*self.subcarrierSpacing*1e3) ### '400000000' #1000000000   #Bandwidth
@@ -307,7 +308,7 @@ class Network(object):
             else : nSlotsIA = int(result[result.index('tIA')+1])
             nominalCapacity = np.float64(result[result.index('Cnominal')+1])
             effectiveCapacity = np.float64(result[result.index('Cefetiva')+1])
-            nominalSNR = 10*np.log10(np.float64(result[result.index('totalSNR')+1])) #np.power(2,nominalCapacity,dtype=np.float64)-1.0)
+            nominalSNR =np.float64(result[result.index('totalSNR')+1]) #10*np.log10(np.float64(result[result.index('totalSNR')+1])) #np.power(2,nominalCapacity,dtype=np.float64)-1.0)
             beamNet = int(float(result[result.index('BSbeam')+1])*self.numberBeams/360)
             beamUser = int(float(result[result.index('USRbeam')+1])*user.numberBeams/360)
             #print('SS Blocks to Initial Access:',nSlotsIA)
