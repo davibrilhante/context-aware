@@ -7,7 +7,7 @@ import sys
 import simutime as st
 import definitions as defs
 from ExhaustiveSearch import ExhaustiveSearch
-from GeolocationAlgorithms import IterativeGeolocation, EnhancedGeolocation
+from GeolocationAlgorithms import IterativeGeolocation, EnhancedGeolocation, ModIterativeGeolocation
 
 
 
@@ -172,7 +172,7 @@ class Network(object):
         self.SEED = seed
         if algorithm == '0':
             self.REC = option
-        elif algorithm =='2' or algorithm=='3':
+        elif algorithm =='2' or algorithm=='3' or algorithm=='4':
             self.ADJ = option
 
 
@@ -282,7 +282,7 @@ class Network(object):
             fastIA = '0'
             limFastIA = '0'
             condCanal = condition #sys.argv[2]
-            if algorithm == '2' or algorithm == '3':
+            if algorithm == '2' or algorithm == '3' or algorithm=='4':
                 nAdjacents = str(self.ADJ)
             else:
                 nAdjacents = '0'
@@ -339,6 +339,9 @@ class Network(object):
                
             elif algorithm == '3':
                 self.env.process(IterativeGeolocation(self, user, condition, nAdjacents))
+
+            elif algorithm == '4':
+                self.env.process(ModIterativeGeolocation(self, user, condition, nAdjacents))
 
         '''
             if (int(self.env.now) + defs.LTE_RTT) < ((self.ssbIndex+1)*defs.BURST_PERIOD):
