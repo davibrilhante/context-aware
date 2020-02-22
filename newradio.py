@@ -14,7 +14,7 @@ import definitions as defs
 Input Arguments parsing
 """
 parser = argparse.ArgumentParser()
-parser.add_argument('-a','--alg', help='IA Algorithm to be performed: 0 (Exhaustive) 2 (Enhanced) 3 (Iterative)', default='0')
+parser.add_argument('-a','--alg', help='IA Algorithm to be performed: 0 (Exhaustive) 2 (Enhanced) 3 (Iterative) 4 (Mod Iterative)', default='0')
 parser.add_argument('-c','--cond',help='Channel condition: 1 (LOS), 2 (NLOS) or 3 (random)',default='1')
 parser.add_argument('-m','--mean', help='mean of GPS error', default='10')
 parser.add_argument('-s','--seed', help='random number generators seed', default='1')
@@ -84,7 +84,7 @@ def main():
     #An input adjustment
     if algorithm == '0':
         option = reciprocity
-    elif algorithm == '2' or algorithm == '3':
+    elif algorithm == '2' or algorithm == '3' or algorithm == '4':
         option = adjacent
 
 
