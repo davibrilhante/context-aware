@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import simpy as sp
 from scipy import stats
 import numpy as np
@@ -16,7 +17,7 @@ Input Arguments parsing
 parser = argparse.ArgumentParser()
 parser.add_argument('-a','--alg', help='IA Algorithm to be performed: 0 (Exhaustive) 2 (Enhanced) 3 (Iterative) 4 (Mod Iterative)', default='0')
 parser.add_argument('-c','--cond',help='Channel condition: 1 (LOS), 2 (NLOS) or 3 (random)',default='1')
-parser.add_argument('-m','--mean', help='mean of GPS error', default='10')
+parser.add_argument('-m','--mean', help='mean of GPS error', default='10', required=False)
 parser.add_argument('-s','--seed', help='random number generators seed', default='1')
 parser.add_argument('-d','--adjacent', help='adjacent beams to specific algorithms', default='2', required=False, type=int)
 parser.add_argument('-r','--reciprocity', help='Channel reciprocity assumption', default='2', required=False, type=int)
