@@ -270,6 +270,7 @@ def IterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, feedb
 def ModIterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, feedback=0):
 
     if nSlotsIA == 0 and feedback ==0:
+        user.setPowerOnTime(network.env.now)
         yield network.env.timeout(defs.LTE_RTT)
         print("- Starting Initial Access with Modified Iterative Geolocation Algorithm.")
         nSlotsIA, sinr, beamNet, beamUser = network.initialAccess('3', condition)
