@@ -120,26 +120,46 @@ class Network(object):
         self.downlinkRatio = ratio
 
     def calcNetworkCapacity(self):
-        dataPeriod = defs.BURST_PERIOD - defs.BURST_DURATION
+        #Decide whether it is or not a burst set frame!
+        rachFlag = False
+        if self.ssbIndex % defs.RATIO != 0:
+            #Burst Set Frame
+            dataPeriod = defs.FRAME_DURATION - defs.BURST_DURATION
+        elif self.ssbIndex % defs.RATIO == 0:
+            #RACH Frame
+            dataPeriod = defs.FRAME_DURATION - defs.BURST_DURATION
+            rachFlag = True
+        elif self.frameIndex % 2 == 1:
+            #Normal Frame
+            dataPeriod = defs.FRAME_DURATION
+        #dataPeriod = defs.BURST_PERIOD - defs.BURST_DURATION
+
         capacity = {
                 'activeUsers' : len(self.associatedUsers),
                 'timePerUser' : 0,
+                #'bandwidthPerUser' : int(self.numerology['maxRB']/len(self.associatedUsers))*12*self.subcarrierSpacing*1e3, #each resource block has 12 subcarriers
                 'bandwidthPerUser' : self.numerology['maxRB']*12*self.subcarrierSpacing*1e3, #each resource block has 12 subcarriers
-                'capacityPerUser' : []
+                'capacityPerUser' : [],
+                'amountData' : 0,
+                'NetworkCapacity' : 0
                 }
 
         if self.associatedUsers != []:
             if self.ALG == '0':
                 accessTimePerUser = dataPeriod*self.downlinkRatio/capacity['activeUsers']
+                accessTimePerUser /= 1e6
                 for i in self.associatedUsers:
                     if i.sinr ==float('inf'):
                         continue
                     capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr))#*accessTimePerUser)
+                    capacity['amountData'] += capacity['bandwidthPerUser']*np.log2(1+i.sinr)*accessTimePerUser
                 capacity['timePerUser'] = accessTimePerUser
+                capacity['NetworkCapacity'] = capacity['amountData']/(dataPeriod*1e-6*self.downlinkRatio)
 
 
             else:
                 usedBurstSlots = self.numerology['ssblocks'] - self.availableSlots
+                '''
                 count = 0
                 ssb = 0
                 for x in self.numerology['ssblockMapping']:
@@ -150,13 +170,22 @@ class Network(object):
                         break
 
                 controlPeriod = usedBurstSlots - count*4*self.numerology['ofdmSymbolDuration']
-                accessTimePerUser = (dataPeriod*self.downlinkRatio + controlPeriod)/capacity['activeUsers']
+                '''
+                if rachFlag: 
+                    burstsetExploit = 0
+                else:
+                    burstsetExploit = self.numerology['ssblockMapping'][usedBurstSlots:].count(1)*self.numerology['ofdmSymbolDuration']
+
+                accessTimePerUser = (dataPeriod*self.downlinkRatio + burstsetExploit)/capacity['activeUsers']
                 accessTimePerUser /= 1e6 #microseconds to seconds conversion
                 for i in self.associatedUsers:
                     if i.sinr ==float('inf'):
                         continue
                     capacity['capacityPerUser'].append(capacity['bandwidthPerUser']*np.log2(1+i.sinr))#*accessTimePerUser)
+                    capacity['amountData'] += capacity['bandwidthPerUser']*np.log2(1+i.sinr)*accessTimePerUser
                 capacity['timePerUser'] = accessTimePerUser
+                capacity['NetworkCapacity'] = capacity['amountData']/(dataPeriod*1e-6*self.downlinkRatio)
+            print(dataPeriod, capacity['timePerUser'])
 
             self.capacityPerFrame.append(capacity)
 
@@ -226,11 +255,13 @@ class Network(object):
                 print('A new rach opportunity is starting at %d and it is the %d ss burst in %d frame' % (self.env.now, self.ssbIndex, self.frameIndex))
                 yield self.env.timeout(rachDuration)
                 print('The rach opportunity  has finished at %d' % self.env.now)
+                '''
                 #GAMBIARRA
                 temp = self.ALG
                 self.ALG = '0'
                 self.calcNetworkCapacity()
                 self.ALG = temp
+                '''
                 yield self.env.timeout(rachPeriod - rachDuration)
 
     def initializeServices(self):
@@ -261,7 +292,7 @@ class Network(object):
             seed = str(int(self.env.now)) #self.SEED #sys.argv[4]
             NF = '5'                       #Noise Figure
             TN = '-174'                    #Thermal Noise
-            BW = str(self.numerology['maxRB']*self.subcarrierSpacing*1e3) ### '400000000' #1000000000   #Bandwidth
+            BW = str(self.numerology['maxRB']*12*self.subcarrierSpacing*1e3) ### '400000000' #1000000000   #Bandwidth
             div = '4'                      #antenna array divisor of wavelength
             move = '75000'                 #Time to keep a path
             minSNR = '-5'                  #Minimal signal to detection

@@ -328,23 +328,26 @@ def ModIterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, fe
                         if not secondPhaseFlag:
                             sweeptime = network.numerology['ssblockMapping'][:ssblock+firstPhaseSlots+1].count(1)*network.numerology['ofdmSymbolDuration']
                             yield network.env.timeout(sweeptime)
+                            #network.availableSlots -= firstPhaseSlots
                             print('id: %d - SS Blocks were sufficient to complete First Phase of Initial Access. Now: %d'%(user.id,network.env.now))
                         else:
                             sweeptime = network.numerology['ssblockMapping'][ssblock:ssblock+secondPhaseSlots+1].count(1)*network.numerology['ofdmSymbolDuration']
                             yield network.env.timeout(sweeptime)
+                            #network.availableSlots -= firstPhaseSlots
                             print('id: %d - SS Blocks were sufficient to complete Second Phase of Initial Access.Now: %d'%(user.id,network.env.now))
 
                         #yield network.env.timeout(nextRachTime - network.env.now)
                         #Will wait untill the feedback received at the control channel 
                         if not secondPhaseFlag:
                             yield network.env.timeout(defs.LTE_RTT)
+                            network.availableSlots -= firstPhaseSlots
                             network.env.process(ModIterativeGeolocation(network, user, condition, nAdjacents, secondPhaseSlots, 1))
                         else:
                             #yield network.env.timeout(defs.LTE_RTT)
-
                             #I Will keep the last feedback as a RACH to provide Uplink Synchronization
                             nextRachTime = burstStartTime + (defs.RATIO - network.ssbIndex%defs.RATIO)*defs.BURST_PERIOD
                             yield network.env.timeout(nextRachTime - network.env.now)
+                            network.availableSlots -= firstPhaseSlots
                             network.env.process(ModIterativeGeolocation(network, user, condition, nAdjacents, 0, 2))
 
                     else:
@@ -358,16 +361,17 @@ def ModIterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA=0, fe
                         #Next try will take place after feedback and the next burst set starts
                         #yield network.env.timeout(defs.LTE_RTT + (nextBurstSet - network.env.now))
                         #network.env.process(ModIterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA, False))
+                        network.availableSlots -= firstPhaseSlots
                         network.env.process(ModIterativeGeolocation(network, user, condition, nAdjacents, nSlotsIA))
                 else:
                     #The SSB were not enough to complete a first phase of sweeping
                     print('id: %d - SS Blocks were not sufficient to complete Initial Access.'%(user.id))
                     if network.availableSlots < firstPhaseSlots:
                         nSlotsIA -= network.availableSlots
-                        network.availableSlots = 0
                     else:
                         nSlotsIA -= firstPhaseSlots - remainingSSBlocks
 
+                    network.availableSlots = 0
                     nextBurstSet = burstStartTime + defs.BURST_PERIOD
                     
                     #it will wait untill the next Burst Set and sweeping continues going on

@@ -21,7 +21,8 @@ parser.add_argument('-m','--mean', help='mean of GPS error', default='10', requi
 parser.add_argument('-s','--seed', help='random number generators seed', default='1')
 parser.add_argument('-d','--adjacent', help='adjacent beams to specific algorithms', default='2', required=False, type=int)
 parser.add_argument('-r','--reciprocity', help='Channel reciprocity assumption', default='2', required=False, type=int)
-parser.add_argument('-l','--radius', help='Scenarios radius', default=defs.ENV_RADIUS, required=False, type=int)
+parser.add_argument('-l','--radius', help='Scenario radius', default=defs.ENV_RADIUS, required=False, type=int)
+parser.add_argument('--ltertt', help='Scenario LTE RTT time in microseconds', default=defs.LTE_RTT, required=False, type=int)
 parser.add_argument('-u','--users', help='Average users simultaneously', default=10, required=False, type=int)
 parser.add_argument('-t','--rate', help='Users Arrival Rate', default=0.1, required=False, type=float)
 
@@ -33,6 +34,7 @@ seed = args.seed
 adjacent = args.adjacent
 reciprocity = args.reciprocity
 defs.ENV_RADIUS = args.radius
+defs.LTE_RTT = args.ltertt
 users = args.users
 
 import components as comp
@@ -53,18 +55,28 @@ def metricsCollector(scenario):
             accSNR.append(user.sinr)
 
     print("Average Initial Access Time: ",np.mean(accIA))
-    print("Average SINR: ", np.mean(accSNR))
+    print("Average SINR: ", 10*np.log10(np.mean(accSNR)))
 
     accAvg = []
     accAgg = []
+    accData = []
+    accTime = [] #access time per user
     for frame in scenario.network.capacityPerFrame:
         ### Average capacity
         accAvg.append(np.mean(frame['capacityPerUser']))
 
         ### Aggregated capacity
-        accAgg.append(sum(frame['capacityPerUser']))
+        #accAgg.append(sum(frame['capacityPerUser']))
+        accAgg.append(frame['NetworkCapacity'])
+        
+
+        accData.append(frame['amountData'])
+        accTime.append(frame['timePerUser'])
+
     print("Average per user Capacity: ",np.mean(accAvg))
     print("Aggregated Network Capacity: ", np.mean(accAgg))
+    print("Average downloaded data: ", np.mean(accData))
+    print("Average downloaded time per user: ", np.mean(accTime))
     #print(accAvg)
     #print(accAgg)
     import matplotlib.pyplot as plt
@@ -103,7 +115,6 @@ def main():
     Scheduling nerwork processes
     """
     fiveG = comp.Network(env,[8,8])
-    print('-Network Object', fiveG)
 
     fiveG.setSubcarrierSpacing(120) #120 KHz subcarrier Spacing
     fiveG.setInitialAccessAlgorithm(algorithm, condition, errorMean, seed, option)
