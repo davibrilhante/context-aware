@@ -8,7 +8,7 @@ The code includes the frame structure of 5G NR and has the following dependencie
 * Numpy and Scipy
 * Simpy
 
-The C++ code is used to calculate the SNR given some parameters, already defined. It is necessary to compile the file (with `g++ -std=c++11 -o initial-access ia.cpp`, for example) to successfuly run the python script.
+The C++ code is used to calculate the SNR given some parameters, already defined. It is necessary to compile the file (with `g++ -std=c++11 -o initial-access newia.cpp`, for example) to successfuly run the python script.
 
 ### Inputs
 
