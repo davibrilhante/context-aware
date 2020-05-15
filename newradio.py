@@ -79,13 +79,14 @@ def metricsCollector(scenario):
     print("Average downloaded time per user: ", np.mean(accTime))
     #print(accAvg)
     #print(accAgg)
+    '''
     import matplotlib.pyplot as plt
     plt.plot(accAvg, label='Average')
     plt.plot(accAgg, label='aggregated')
     plt.ylim(0,7e10)
     plt.legend()
     plt.show()
-
+    '''
 
         
 def main():
